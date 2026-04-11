@@ -12,7 +12,7 @@ GitHub에서 프로젝트를 막 Clone 받아 로컬에서 실행하려는 팀�
 1. 저장소를 클론받고 폴더로 이동합니다.
    ```bash
    git clone [저장소 URL]
-   cd PRACTICEAI # 또는 설정된 프로젝트 폴더명
+   cd Horrse # 또는 설정된 프로젝트 폴더명
    ```
 
 2. 프로젝트 최상위 경로에 있는 `.env.example` 파일을 복사하여 `.env` 라는 이름으로 새 파일을 만듭니다.
