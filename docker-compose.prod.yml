@@ -1,0 +1,25 @@
+version: '3.8'
+
+# Production overrides
+services:
+  db:
+    restart: always
+    # Typically don't expose db port directly in prod
+    # ports:
+    #   - "5432:5432"
+
+  redis:
+    restart: always
+
+  ai_server:
+    restart: always
+    # 운영환경에서 AI 서버는 Spring Boot 내부 네트워크에서만 접근
+    # 외부에 포트 직접 노출 금지
+
+  ai_worker:
+    restart: always
+
+  api:
+    restart: always
+    ports:
+      - "8080:8080"

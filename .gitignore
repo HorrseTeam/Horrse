@@ -1,0 +1,42 @@
+# Environments
+.env
+.env.*
+!.env.example
+
+# OS Dependencies
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+
+# Python / AI
+__pycache__/
+*.pyc
+venv/
+env/
+.venv/
+
+# Java / Spring Boot
+target/
+*.class
+*.jar
+*.war
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# Temporary uploads / resources
+uploads/
+/backend-ai/videos/
+/backend-ai/images/

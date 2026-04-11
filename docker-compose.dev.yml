@@ -1,0 +1,26 @@
+version: '3.8'
+
+# Development overrides
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  ai_server:
+    ports:
+      - "8000:8000"
+    # In dev, we might want to mount volumes for hot reloading
+    volumes:
+      - ./backend-ai:/app
+
+  ai_worker:
+    volumes:
+      - ./backend-ai:/app
+
+  api:
+    ports:
+      - "8080:8080"
