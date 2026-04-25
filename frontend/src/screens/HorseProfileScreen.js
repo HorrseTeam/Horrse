@@ -74,7 +74,7 @@ export default function HorseProfileScreen() {
         />
 
         <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>DB에 진짜로 등록하기</Text>
+          <Text style={styles.buttonText}>등록</Text>
         </TouchableOpacity>
       </View>
 
