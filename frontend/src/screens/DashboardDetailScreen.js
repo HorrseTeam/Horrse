@@ -40,7 +40,7 @@ export default function DashboardDetailScreen({ route }) {
 
       {/* 통계 카드 */}
       <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: '#fff7f0', borderColor: '#fdba74' }]}>
+        <View style={[styles.statCard, { backgroundColor: '#f8f9ff', borderColor: '#fdba74' }]}>
           <Text style={styles.statIcon}>🩺</Text>
           <Text style={styles.statValue}>{diagnoses.length}</Text>
           <Text style={styles.statLabel}>총 진단</Text>
@@ -62,18 +62,18 @@ export default function DashboardDetailScreen({ route }) {
       <View style={styles.chartCard}>
         <LineChart
           data={chartData}
-          width={screenWidth - 48}
+          width={screenWidth - 40}
           height={200}
           yAxisSuffix="°C"
           chartConfig={{
             backgroundColor: '#ffffff',
-            backgroundGradientFrom: '#fff7f0',
+            backgroundGradientFrom: '#f8f9ff',
             backgroundGradientTo: '#ffffff',
             decimalPlaces: 1,
             color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`,
             labelColor: (opacity = 1) => `rgba(60, 30, 0, ${opacity})`,
             style: { borderRadius: 16 },
-            propsForDots: { r: '5', strokeWidth: '2', stroke: '#f97316' },
+            propsForDots: { r: '5', strokeWidth: '2', stroke: '#4f6ef7' },
           }}
           bezier
           style={{ marginVertical: 4, borderRadius: 12 }}
@@ -83,7 +83,7 @@ export default function DashboardDetailScreen({ route }) {
       {/* 최근 AI 진단 이력 */}
       <Text style={styles.sectionTitle}>최근 AI 진단 이력</Text>
       {loading ? (
-        <ActivityIndicator size="small" color="#f97316" style={{ marginVertical: 20 }} />
+        <ActivityIndicator size="small" color="#4f6ef7" style={{ marginVertical: 20 }} />
       ) : diagnoses.length > 0 ? (
         diagnoses.slice(0, 10).map((diag, idx) => (
           <View key={idx} style={[styles.diagCard, { borderLeftColor: diag.isLameness ? '#f44336' : '#10b981' }]}>
@@ -108,16 +108,16 @@ export default function DashboardDetailScreen({ route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff7f0' },
+  container: { flex: 1, backgroundColor: '#f8faff' },
   profileBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f97316',
+    backgroundColor: '#4f6ef7',
     paddingVertical: 16,
     paddingHorizontal: 20,
     gap: 14,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     marginBottom: 20,
   },
   profileIcon: { fontSize: 40 },
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#7c3a00',
+    color: '#1e2d6b',
     marginLeft: 20,
     marginBottom: 12,
   },
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     padding: 12,
     marginBottom: 24,
-    shadowColor: '#f97316',
+    shadowColor: '#4f6ef7',
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,

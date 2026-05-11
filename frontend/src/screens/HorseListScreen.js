@@ -8,16 +8,27 @@ import { useFocusEffect } from '@react-navigation/native';
 import API_URL from '../config/api';
 
 export default function HorseListScreen({ navigation }) {
-  const [horses, setHorses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchHorses = async () => {
+  const [horses, setHorses] = useState([]);
+
+
+const fetchHorses = async () => {
     try {
       const response = await axios.get(`${API_URL}/horses`);
-      setHorses(response.data);
+      
+      // 가나다순(이름순)으로 정렬
+      const sortedData = response.data.sort((a, b) => {
+        return a.name.localeCompare(b.name, 'ko');
+      });
+
+      setHorses(sortedData);
     } catch (error) {
       console.error('말 목록 로드 실패:', error);
+      
+      // 서버 에러 시:
+      setHorses(prev => [...prev].sort((a, b) => a.name.localeCompare(b.name, 'ko')));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -63,7 +74,7 @@ export default function HorseListScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>내 말 목록</Text>
+        <Text style={styles.headerTitle}>말 목록</Text>
         <Text style={styles.headerSub}>{horses.length}마리 등록됨</Text>
       </View>
 
@@ -139,7 +150,7 @@ const styles = StyleSheet.create({
   horseIconText: { fontSize: 26 },
   horseInfo: { flex: 1 },
   horseName: { fontSize: 17, fontWeight: '700', color: '#1e2d6b' },
-  horseBreed: { fontSize: 13, color: '#6b7cbe', marginTop: 2 },
+  horseBreed: { fontSize: 13, color: '#4f6ef7', marginTop: 2 },
   horseBirth: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
   chevron: { fontSize: 26, color: '#c0c8e8', fontWeight: '300' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

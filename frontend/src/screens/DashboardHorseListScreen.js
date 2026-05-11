@@ -8,16 +8,26 @@ import { useFocusEffect } from '@react-navigation/native';
 import API_URL from '../config/api';
 
 export default function DashboardHorseListScreen({ navigation }) {
-  const [horses, setHorses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchHorses = async () => {
+  const [horses, setHorses] = useState([]);
+  
+const fetchHorses = async () => {
     try {
       const response = await axios.get(`${API_URL}/horses`);
-      setHorses(response.data);
+      
+      // 가나다순(이름순)으로 정렬
+      const sortedData = response.data.sort((a, b) => {
+        return a.name.localeCompare(b.name, 'ko');
+      });
+
+      setHorses(sortedData);
     } catch (error) {
       console.error('말 목록 로드 실패:', error);
+      
+      // 서버 에러 시:
+      setHorses(prev => [...prev].sort((a, b) => a.name.localeCompare(b.name, 'ko')));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -46,7 +56,7 @@ export default function DashboardHorseListScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#f97316" />
+        <ActivityIndicator size="large" color="#4f6ef7" />
         <Text style={styles.loadingText}>말 목록을 불러오는 중...</Text>
       </View>
     );
@@ -100,22 +110,22 @@ export default function DashboardHorseListScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff7f0' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff7f0' },
-  loadingText: { marginTop: 12, color: '#f97316', fontSize: 14 },
+  container: { flex: 1, backgroundColor: '#f0f4ff' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f4ff' },
+  loadingText: { marginTop: 12, color: '#4f6ef7', fontSize: 14 },
   header: {
-    backgroundColor: '#f97316',
+    backgroundColor: '#4f6ef7',
     paddingTop: 16,
     paddingBottom: 24,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     marginBottom: 8,
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
   list: { padding: 16 },
-  listHeader: { fontSize: 15, fontWeight: '600', color: '#7c3a00', marginBottom: 12 },
+  listHeader: { fontSize: 15, fontWeight: '600', color: '#1e293b', marginBottom: 12 },
   horseCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -123,7 +133,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     marginBottom: 12,
-    shadowColor: '#f97316',
+    shadowColor: '#4f6ef7',
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
@@ -132,25 +142,25 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#fff3e8',
+    backgroundColor: '#e8eeff',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
   horseIconText: { fontSize: 26 },
   horseInfo: { flex: 1 },
-  horseName: { fontSize: 17, fontWeight: '700', color: '#7c3a00' },
-  horseBreed: { fontSize: 13, color: '#c2601a', marginTop: 2 },
+  horseName: { fontSize: 17, fontWeight: '700', color: '#000' },
+  horseBreed: { fontSize: 13, color: '#4f6ef7', marginTop: 2 },
   horseBirth: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
   viewBadge: {
-    backgroundColor: '#fff3e8',
+    backgroundColor: '#e8eeff',
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  viewBadgeText: { fontSize: 11, fontWeight: '600', color: '#f97316' },
+  viewBadgeText: { fontSize: 11, fontWeight: '600', color: '#4f6ef7' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#7c3a00' },
+  emptyText: { fontSize: 18, fontWeight: '600', color: '#000' },
   emptySubText: { fontSize: 14, color: '#94a3b8', marginTop: 8 },
 });
