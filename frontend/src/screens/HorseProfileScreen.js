@@ -130,7 +130,7 @@ export default function HorseProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.title}>내 말 목록 ({horses.length}마리)</Text>
+
       {horses.map((horse, index) => (
         <View key={index} style={styles.horseItem}>
           <View>

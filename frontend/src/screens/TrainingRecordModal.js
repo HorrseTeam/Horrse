@@ -18,6 +18,7 @@ export default function TrainingRecordModal({ isVisible, onClose, horseId }) {
   // ... 유효성 검사 로직 ...
 
     try {
+      
       await axios.post(`${API_URL}/training-records`, {
       horseId,
       trainingType,

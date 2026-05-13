@@ -71,7 +71,7 @@ export default function HorseDetailScreen({ route, navigation }) {
       <Text style={styles.sectionTitle}>기본 정보</Text>
       <View style={styles.infoCard}>
         
-        <View style={styles.infoItem}><Text style={styles.infoLabel}>담당자</Text><Text style={styles.infoValue}>{horse.manager || '마지정'}</Text></View>
+        <View style={styles.infoItem}><Text style={styles.infoLabel}>담당자</Text><Text style={styles.infoValue}>{horse.manager || '홍길동'}</Text></View>
         <View style={styles.infoItem}><Text style={styles.infoLabel}>성별</Text><Text style={styles.infoValue}>{horse.gender === 'MALE' ? '수컷' : '암컷'}</Text></View>
         <View style={styles.divider} />
         <View style={styles.infoItem}><Text style={styles.infoLabel}>생년월일</Text><Text style={styles.infoValue}>{horse.birthDate || '-'}</Text></View>

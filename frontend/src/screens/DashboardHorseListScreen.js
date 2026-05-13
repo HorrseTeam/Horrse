@@ -12,27 +12,39 @@ export default function DashboardHorseListScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
 
   const [horses, setHorses] = useState([]);
-  
 const fetchHorses = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/horses`);
-      
-      // 가나다순(이름순)으로 정렬
-      const sortedData = response.data.sort((a, b) => {
-        return a.name.localeCompare(b.name, 'ko');
-      });
-
+  try {
+    const response = await axios.get(`${API_URL}/horses`);
+    
+    if (response.data && response.data.length > 0) {
+      // 서버 데이터가 있을 때 가나다순 정렬
+      const sortedData = response.data.sort((a, b) => 
+        a.name.localeCompare(b.name, 'ko')
+      );
       setHorses(sortedData);
-    } catch (error) {
-      console.error('말 목록 로드 실패:', error);
-      
-      // 서버 에러 시:
-      setHorses(prev => [...prev].sort((a, b) => a.name.localeCompare(b.name, 'ko')));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    } else {
+      setHorses([]);
     }
-  };
+  } catch (error) {
+    console.error('말 목록 로드 실패:', error);
+    
+    // [확인용] 서버 연결 실패 시 더미 데이터라도 띄워보려면 아래 주석을 해제하세요
+
+      const dummyData = [
+        { id: 1, name: "강풍", breed: "더러브렛", birthDate: "2019-04-12" },
+        { id: 2, name: "감귤이", breed: "제주마", birthDate: "2021-08-20" },
+        { id: 3, name: "샛별", breed: "제주마", birthDate: "2020-01-05" },
+        { id: 4, name: "에이스", breed: "더러브렛", birthDate: "2018-11-30" },
+        { id: 5, name: "태풍", breed: "더러브렛", birthDate: "2022-02-15" },
+      ];
+
+    setHorses(dummyData.sort((a, b) => a.name.localeCompare(b.name, 'ko')));
+
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   useFocusEffect(
     useCallback(() => {
