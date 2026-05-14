@@ -51,18 +51,23 @@ export default function HorseAIAnalysisScreen({ route }) {
       Alert.alert('사진 필요', '분석할 파일을 먼저 선택해주세요.');
       return;
     }
-    if (analysisType === 'lameness' && (!walkDirection || !walkType)) {
-      Alert.alert('입력 요망', '보행 방향 및 형식을 선택해주세요.');
+    // 유효성 검사 수정: 발굽 분석도 방향 선택 필수
+    if (!walkDirection) {
+      Alert.alert('입력 요망', '보행 방향을 선택해주세요.');
       return;
     }
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append('horse_id', String(horse.id));
+      
+      // 발굽 분석 시에도 방향 정보 전송
+      formData.append('walk_direction', walkDirection);
+      
       if (analysisType === 'lameness') {
-        formData.append('walk_direction', walkDirection);
         formData.append('walk_type', walkType);
       }
+
       const filename = image.split('/').pop() || 'test.jpg';
       const match = /\.(\w+)$/.exec(filename);
       const type = match ? `image/${match[1]}` : `image`;
@@ -96,7 +101,7 @@ export default function HorseAIAnalysisScreen({ route }) {
         </View>
       </View>
 
-      {/* 분석 타입 표시 배지 */}
+      {/* 분석 타입 배지 */}
       <View style={styles.typeBadge}>
         <Text style={styles.typeBadgeText}>
           {analysisType === 'hoof' ? '🐾 발굽 분석' : '🦿 파행 진단'}
@@ -118,47 +123,56 @@ export default function HorseAIAnalysisScreen({ route }) {
           </View>
         )}
 
-        {/* 파행 파라미터 */}
-        {analysisType === 'lameness' && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={styles.inputLabel}>보행 방향</Text>
-            <View style={styles.buttonSegment}>
-              {['FRONT', 'SIDE', 'BACK'].map(dir => (
-                <TouchableOpacity
-                  key={dir}
-                  style={[styles.segmentBtn, walkDirection === dir && styles.segmentBtnActive]}
-                  onPress={() => setWalkDirection(dir)}
-                >
-                  <Text style={[styles.segmentText, walkDirection === dir && styles.segmentTextActive]}>{dir}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.inputLabel}>보행 유형</Text>
-            <View style={styles.buttonSegment}>
-              {['WALK', 'TROT'].map(t => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.segmentBtn, walkType === t && styles.segmentBtnActive]}
-                  onPress={() => setWalkType(t)}
-                >
-                  <Text style={[styles.segmentText, walkType === t && styles.segmentTextActive]}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+        {/* ----------------- 파라미터 선택 영역 수정 ----------------- */}
+        <View style={{ marginBottom: 16 }}>
+          {/* 보행 방향 선택: 발굽 분석(hoof)과 파행 진단(lameness) 모두에서 표시 */}
+          <Text style={styles.inputLabel}>보행 방향</Text>
+          <View style={styles.buttonSegment}>
+            {['FRONT', 'SIDE', 'BACK'].map(dir => (
+              <TouchableOpacity
+                key={dir}
+                style={[styles.segmentBtn, walkDirection === dir && styles.segmentBtnActive]}
+                onPress={() => setWalkDirection(dir)}
+              >
+                <Text style={[styles.segmentText, walkDirection === dir && styles.segmentTextActive]}>{dir}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        )}
+
+          {/* 보행 유형 선택: 파행 진단(lameness)일 때만 표시 */}
+          {analysisType === 'lameness' && (
+            <>
+              <Text style={styles.inputLabel}>보행 유형</Text>
+              <View style={styles.buttonSegment}>
+                {['WALK', 'TROT'].map(t => (
+                  <TouchableOpacity
+                    key={t}
+                    style={[styles.segmentBtn, walkType === t && styles.segmentBtnActive]}
+                    onPress={() => setWalkType(t)}
+                  >
+                    <Text style={[styles.segmentText, walkType === t && styles.segmentTextActive]}>{t}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+        </View>
+        {/* -------------------------------------------------------- */}
 
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.outlineButton} onPress={pickImage}>
             <Text style={styles.outlineButtonText}>📁 파일 선택</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.solidButton, analysisType === 'hoof' ? { backgroundColor: '#10b981' } : { backgroundColor: '#4f6ef7' }]} onPress={uploadAndAnalyze}>
+          <TouchableOpacity 
+            style={[styles.solidButton, analysisType === 'hoof' ? { backgroundColor: '#10b981' } : { backgroundColor: '#4f6ef7' }]} 
+            onPress={uploadAndAnalyze}
+          >
             <Text style={styles.solidButtonText}>AI 분석 요청</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* 로딩 */}
+      {/* 로딩 및 결과 UI (기존과 동일) */}
       {loading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4f6ef7" />
@@ -166,7 +180,6 @@ export default function HorseAIAnalysisScreen({ route }) {
         </View>
       )}
 
-      {/* 결과 */}
       {result && !loading && (
         <View style={[styles.resultCard, { borderLeftColor: analysisType === 'hoof' ? '#10b981' : '#4f6ef7' }]}>
           <Text style={styles.resultTitle}>분석 결과</Text>
@@ -188,13 +201,6 @@ export default function HorseAIAnalysisScreen({ route }) {
               <Text style={{ fontWeight: 'bold' }}>이상 부위: <Text style={{ color: 'red' }}>{result.diagnosis.affected_area}</Text></Text>
               <Text>문제 관절: {result.diagnosis.problem_joint}</Text>
               <Text>상세설명: {result.diagnosis.description}</Text>
-              <Text style={{ fontWeight: 'bold', marginTop: 10 }}>관절 좌표 ({result.joint_array ? result.joint_array.length : 0}개):</Text>
-              {result.joint_array && result.joint_array.slice(0, 3).map((j, i) => (
-                <Text key={i} style={{ fontSize: 11, color: '#555' }}>- {j.name}: ({j.x}, {j.y}, score:{j.score})</Text>
-              ))}
-              {result.joint_array && result.joint_array.length > 3 && (
-                <Text style={{ fontSize: 11, color: '#888' }}>... 외 {result.joint_array.length - 3}개 더</Text>
-              )}
             </View>
           )}
         </View>
@@ -205,52 +211,14 @@ export default function HorseAIAnalysisScreen({ route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f0f4ff', padding: 16 },
-  horseBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-    shadowColor: '#4f6ef7',
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 2,
-    gap: 12,
-  },
+  horseBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 16, shadowColor: '#4f6ef7', shadowOpacity: 0.07, shadowRadius: 6, elevation: 2, gap: 12 },
   horseBannerIcon: { fontSize: 32 },
   horseBannerName: { fontSize: 17, fontWeight: '700', color: '#1e2d6b' },
   horseBannerBreed: { fontSize: 13, color: '#6b7cbe' },
-  typeBadge: {
-    alignSelf: 'flex-start',
-    marginBottom: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: '#e8eeff',
-  },
+  typeBadge: { alignSelf: 'flex-start', marginBottom: 14, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#e8eeff' },
   typeBadgeText: { fontSize: 14, fontWeight: '700', color: '#4f6ef7' },
-  uploadCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: '#4f6ef7',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  placeholderBox: {
-    height: 180,
-    backgroundColor: '#f8faff',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#c7d2fe',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
+  uploadCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 20, shadowColor: '#4f6ef7', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
+  placeholderBox: { height: 180, backgroundColor: '#f8faff', borderRadius: 10, borderWidth: 2, borderColor: '#c7d2fe', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   placeholderIcon: { fontSize: 40, marginBottom: 8 },
   placeholderText: { color: '#94a3b8', fontSize: 14 },
   previewImage: { width: '100%', height: 180, borderRadius: 10, marginBottom: 16, resizeMode: 'cover' },
@@ -267,27 +235,10 @@ const styles = StyleSheet.create({
   solidButtonText: { color: '#fff', fontWeight: 'bold' },
   loadingContainer: { alignItems: 'center', padding: 20 },
   loadingText: { marginTop: 12, color: '#4f6ef7', fontWeight: '600' },
-  resultCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-    marginBottom: 24,
-  },
+  resultCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderLeftWidth: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1, marginBottom: 24 },
   resultTitle: { fontSize: 18, fontWeight: 'bold', color: '#0f172a', marginBottom: 8 },
   resultMessage: { color: '#475569', marginBottom: 12 },
-  resultRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    paddingBottom: 6,
-  },
+  resultRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingBottom: 6 },
   resultLabel: { color: '#64748b' },
   resultValue: { fontWeight: 'bold', color: '#0f172a' },
 });

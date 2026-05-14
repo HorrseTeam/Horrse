@@ -8,14 +8,28 @@ import { useFocusEffect } from '@react-navigation/native';
 import API_URL from '../config/api';
 
 export default function HorseListScreen({ navigation }) {
-  const [horses, setHorses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [horses, setHorses] = useState([]);
 
+  // UI 확인을 위한 테스트 데이터 삽입 버전
   const fetchHorses = async () => {
     try {
-      const response = await axios.get(`${API_URL}/horses`);
-      setHorses(response.data);
+      // 실제 서버 통신 대신 사용할 테스트 데이터
+      const dummyData = [
+        { id: 1, name: "강풍", breed: "더러브렛", birthDate: "2019-04-12" },
+        { id: 2, name: "감귤이", breed: "제주마", birthDate: "2021-08-20", registrationNumber: "KO123" },
+        { id: 3, name: "샛별", breed: "제주마", birthDate: "2020-01-05" },
+        { id: 4, name: "에이스", breed: "더러브렛", birthDate: "2018-11-30" },
+        { id: 5, name: "태풍", breed: "더러브렛", birthDate: "2022-02-15" },
+      ];
+
+      // 가나다순(이름순)으로 정렬 로직
+      const sortedData = dummyData.sort((a, b) => {
+        return a.name.localeCompare(b.name, 'ko');
+      });
+
+      setHorses(sortedData);
     } catch (error) {
       console.error('말 목록 로드 실패:', error);
     } finally {
@@ -46,7 +60,8 @@ export default function HorseListScreen({ navigation }) {
 
   const getBreedIcon = (breed) => {
     if (!breed) return '🐴';
-    if (breed.includes('더러브렛') || breed.includes('Thoroughbred')) return '🏇';
+    // 더러브렛과 제주마에 따른 아이콘 분기
+    if (breed.includes('더러브렛')) return '🏇';
     if (breed.includes('제주')) return '🐎';
     return '🐴';
   };
@@ -63,8 +78,8 @@ export default function HorseListScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>내 말 목록</Text>
-        <Text style={styles.headerSub}>{horses.length}마리 등록됨</Text>
+        <Text style={styles.headerTitle}>말 목록</Text>
+        <Text style={styles.headerSub}>{horses.length}마리 </Text>
       </View>
 
       {horses.length === 0 ? (
@@ -91,7 +106,7 @@ export default function HorseListScreen({ navigation }) {
               <View style={styles.horseInfo}>
                 <Text style={styles.horseName}>{item.name}</Text>
                 <Text style={styles.horseBreed}>{item.breed}</Text>
-                <Text style={styles.horseBirth}>생년월일: {item.birthDate}  {getAgeText(item.birthDate)}</Text>
+                <Text style={styles.horseBirth}>생년월일: {item.birthDate}  </Text>
               </View>
               <Text style={styles.chevron}>›</Text>
             </TouchableOpacity>
@@ -139,7 +154,7 @@ const styles = StyleSheet.create({
   horseIconText: { fontSize: 26 },
   horseInfo: { flex: 1 },
   horseName: { fontSize: 17, fontWeight: '700', color: '#1e2d6b' },
-  horseBreed: { fontSize: 13, color: '#6b7cbe', marginTop: 2 },
+  horseBreed: { fontSize: 13, color: '#4f6ef7', marginTop: 2 },
   horseBirth: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
   chevron: { fontSize: 26, color: '#c0c8e8', fontWeight: '300' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

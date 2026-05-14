@@ -20,6 +20,7 @@ import DashboardDetailScreen from './src/screens/DashboardDetailScreen';
 // 일정
 import CalendarScreen from './src/screens/CalendarScreen';
 
+
 // 설정
 import SettingsScreen from './src/screens/SettingsScreen';
 
@@ -63,7 +64,7 @@ function DashboardStackNavigator() {
   return (
     <DashboardStack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#f97316' },
+        headerStyle: { backgroundColor: '#4f6ef7' },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: 'bold' },
       }}
@@ -111,13 +112,15 @@ export default function App() {
               backgroundColor: '#fff',
               borderTopWidth: 1,
               borderTopColor: '#e8eeff',
-              height: 60,
-              paddingBottom: 8,
-              paddingTop: 4,
+              height: 70,
+              paddingBottom: 5,
+              paddingTop: 5,
             },
             tabBarLabelStyle: {
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: '600',
+              marginBottom: 8,
+              marginTop: 0,
             },
             headerShown: false,
           })}
@@ -129,7 +132,7 @@ export default function App() {
               tabBarLabel: '홈',
               headerShown: true,
               headerTitle: '말 등록',
-              headerStyle: { backgroundColor: '#4caf50' },
+              headerStyle: { backgroundColor: '#4f6ef7' },
               headerTitleStyle: { fontWeight: 'bold', color: '#fff' },
               headerTintColor: '#fff',
             }}
@@ -149,6 +152,7 @@ export default function App() {
             component={CalendarScreen}
             options={{ tabBarLabel: '일정' }}
           />
+
           <Tab.Screen
             name="Settings"
             component={SettingsScreen}

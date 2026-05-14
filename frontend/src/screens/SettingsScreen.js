@@ -11,19 +11,11 @@ const SETTINGS_SECTIONS = [
       { icon: '🔔', label: '알림 설정', desc: '일정 푸시 알림', disabled: true },
     ],
   },
-  {
-    title: '앱',
-    items: [
-      { icon: '🌐', label: '언어 설정', desc: '한국어', disabled: true },
-      { icon: '🎨', label: '테마', desc: '라이트 모드', disabled: true },
-      { icon: '📡', label: '서버 설정', desc: 'API 주소 변경', disabled: true },
-    ],
-  },
+
   {
     title: '정보',
     items: [
-      { icon: '📋', label: '버전 정보', desc: 'v1.0.0', disabled: true },
-      { icon: '🔒', label: '개인정보 처리방침', desc: '', disabled: true },
+
       { icon: '📞', label: '고객 지원', desc: '', disabled: true },
     ],
   },
@@ -38,10 +30,8 @@ export default function SettingsScreen() {
           <Text style={styles.avatarText}>👤</Text>
         </View>
         <Text style={styles.profileName}>관리자</Text>
-        <Text style={styles.profileRole}>말 건강 관리 시스템</Text>
-        <View style={styles.profileBadge}>
-          <Text style={styles.profileBadgeText}>준비 중입니다</Text>
-        </View>
+
+
       </View>
 
       {/* 설정 섹션들 */}
@@ -72,7 +62,7 @@ export default function SettingsScreen() {
         </View>
       ))}
 
-      <Text style={styles.footer}>Horrse Health Management System © 2025</Text>
+      <Text style={styles.footer}>Horrse Health Management System © 2026</Text>
     </ScrollView>
   );
 }
@@ -84,8 +74,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 24,
     paddingBottom: 28,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     marginBottom: 24,
   },
   avatarCircle: {

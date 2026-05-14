@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   resultMessage: { color: '#475569', marginBottom: 16 },
   resultRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingBottom: 4 },
   resultLabel: { color: '#64748b' },
-  resultValue: { fontWeight: 'bold', color: '#0f172a' },
+  resultValue: { fontWeight: 'bold', color: '#0f172a', fontsize:18 },
   inputLabel: { fontSize: 14, fontWeight: 'bold', marginBottom: 6, color: '#333' },
   buttonSegment: { flexDirection: 'row', marginBottom: 16, backgroundColor: '#f1f5f9', borderRadius: 8, padding: 4 },
   segmentBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 4 },

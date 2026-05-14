@@ -8,6 +8,7 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import API_URL from '../config/api';
 
+
 export default function NewCalendarScreen() {
   const [selected, setSelected] = useState('');
   const [schedules, setSchedules] = useState([]);
@@ -56,10 +57,20 @@ export default function NewCalendarScreen() {
     }, [fetchData])
   );
 
-  const handleAddSchedule = async () => {
+const handleAddSchedule = async () => {
     if (!formHorseId) { Alert.alert('알림', '말을 선택해주세요!'); return; }
     if (!formTitle) { Alert.alert('알림', '일정 제목을 입력해주세요!'); return; }
     if (!formDate) { Alert.alert('알림', '날짜를 선택해주세요!'); return; }
+
+    // 실제 권한 체크 라이브러리가 없다면, 테스트를 위해 true/false를 바꿔보며 확인할 수 있습니다.
+    const isNotificationDenied = false; // 만약 권한 거부 상태라면 true로직 실행
+
+    if (isNotificationDenied && Platform.OS === 'android') {
+      ToastAndroid.show(
+        '알림을 받으려면 기기 설정에서 알림을 허용해 주세요',
+        ToastAndroid.LONG
+      );
+    }
 
     try {
       await axios.post(`${API_URL}/schedules`, {
@@ -67,9 +78,12 @@ export default function NewCalendarScreen() {
         title: formTitle,
         description: formContent,
         eventDate: `${formDate}T${formTime}:00`,
-        notify: true,
+        notify: true, // 유즈케이스: 전날 알림 자동 예약
       });
+      
       Alert.alert('성공', '일정이 등록되었습니다!');
+      
+      // 등록 후 초기화 로직
       setFormTitle('');
       setFormContent('');
       setFormDate('');
@@ -239,13 +253,13 @@ export default function NewCalendarScreen() {
                 </View>
               ))
             ) : (
-              <Text style={styles.noSchedule}>이 날짜에 등록된 일정이 없습니다.</Text>
+              <Text style={styles.noSchedule}>등록된 일정이 없습니다.</Text>
             )}
           </View>
         ) : (
           <View style={styles.placeholderSection}>
             <Text style={styles.placeholderIcon}>📅</Text>
-            <Text style={styles.placeholderText}>날짜를 선택하면 일정을 확인하거나 추가할 수 있습니다.</Text>
+            <Text style={styles.placeholderText}>날짜를 선택하면 일정을 {'\n' } 확인하거나 추가할 수 있습니다.</Text>
           </View>
         )}
       </ScrollView>
