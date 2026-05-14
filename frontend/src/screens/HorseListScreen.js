@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
-  ActivityIndicator, RefreshControl
+  ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
@@ -12,26 +12,21 @@ export default function HorseListScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [horses, setHorses] = useState([]);
 
-  // UI 확인을 위한 테스트 데이터 삽입 버전
+  // DB에서 말 목록을 불러오는 함수
   const fetchHorses = async () => {
     try {
-      // 실제 서버 통신 대신 사용할 테스트 데이터
-      const dummyData = [
-        { id: 1, name: "강풍", breed: "더러브렛", birthDate: "2019-04-12" },
-        { id: 2, name: "감귤이", breed: "제주마", birthDate: "2021-08-20", registrationNumber: "KO123" },
-        { id: 3, name: "샛별", breed: "제주마", birthDate: "2020-01-05" },
-        { id: 4, name: "에이스", breed: "더러브렛", birthDate: "2018-11-30" },
-        { id: 5, name: "태풍", breed: "더러브렛", birthDate: "2022-02-15" },
-      ];
+      const response = await axios.get(`${API_URL}/horses`);
+      const data = response.data;
 
-      // 가나다순(이름순)으로 정렬 로직
-      const sortedData = dummyData.sort((a, b) => {
-        return a.name.localeCompare(b.name, 'ko');
-      });
+      // 가나다순(이름순)으로 정렬
+      const sortedData = [...data].sort((a, b) =>
+        a.name.localeCompare(b.name, 'ko')
+      );
 
       setHorses(sortedData);
     } catch (error) {
       console.error('말 목록 로드 실패:', error);
+      Alert.alert('오류', '말 목록을 불러오는 데 실패했습니다.\n서버 연결을 확인해주세요.');
     } finally {
       setLoading(false);
       setRefreshing(false);
