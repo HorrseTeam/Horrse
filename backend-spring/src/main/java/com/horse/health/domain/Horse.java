@@ -19,7 +19,10 @@ public class Horse {
     private LocalDate birthDate;
 
     private String gender;
-    
+
+    @Column(name = "registration_number", length = 50)
+    private String registrationNumber;
+
     @Column(name = "manager_id", length = 50)
     private String managerId;
 
