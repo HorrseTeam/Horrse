@@ -19,3 +19,6 @@ server:
 ai:
   server:
     url: ${AI_SERVER_URL:http://localhost:8000}
+
+jwt:
+  secret: horrse-jwt-secret-key-2026-very-long-string-for-security
