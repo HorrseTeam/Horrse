@@ -18,4 +18,7 @@ public class Schedule {
     private LocalDateTime eventDate;
     private String description;
     private Boolean notify = true;
+
+    @Column(name = "notified")
+    private Boolean notified = false;
 }

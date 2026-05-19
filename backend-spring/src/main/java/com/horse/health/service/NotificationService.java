@@ -1,8 +1,9 @@
 package com.horse.health.service;
 
 import com.horse.health.domain.Schedule;
+import com.horse.health.repository.HorseRepository;
 import com.horse.health.repository.ScheduleRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.horse.health.repository.UserRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -12,24 +13,57 @@ import java.util.List;
 @Service
 public class NotificationService {
 
-    @Autowired
-    private ScheduleRepository scheduleRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final UserRepository userRepository;
+    private final HorseRepository horseRepository;
+    private final FcmService fcmService;
 
-    // Run every minute to simulate scanning the DB and firing Celery Beat / FCM Push notification
+    public NotificationService(ScheduleRepository scheduleRepository,
+                               UserRepository userRepository,
+                               HorseRepository horseRepository,
+                               FcmService fcmService) {
+        this.scheduleRepository = scheduleRepository;
+        this.userRepository = userRepository;
+        this.horseRepository = horseRepository;
+        this.fcmService = fcmService;
+    }
+
     @Scheduled(fixedRate = 60000)
-    public void simulateFcmPushNotifications() {
-        System.out.println("[Scheduler] Checking for upcoming schedules to notify via FCM...");
-        List<Schedule> allSchedules = scheduleRepository.findAll();
+    public void checkAndSendNotifications() {
         LocalDateTime now = LocalDateTime.now();
 
+        List<Schedule> allSchedules = scheduleRepository.findAll();
+
         for (Schedule schedule : allSchedules) {
-            // IF event is within the next 24 hours (simulating the "notification a day before" PDF requirement)
-            if (Boolean.TRUE.equals(schedule.getNotify()) && schedule.getEventDate() != null && schedule.getEventDate().isAfter(now) && schedule.getEventDate().isBefore(now.plusDays(1))) {
-                System.out.println(">>> [FCM PUSH MOCK] Sending push notification to User for Horse ID " 
-                                    + schedule.getHorseId() + "\n"
-                                    + "   * Title: " + schedule.getTitle() + "\n"
-                                    + "   * Date: " + schedule.getEventDate() + "\n"
-                                    + "   * Message: 내일 중요한 일정이 다가옵니다!");
+            if (Boolean.TRUE.equals(schedule.getNotify())
+                    && Boolean.FALSE.equals(schedule.getNotified())
+                    && schedule.getEventDate() != null
+                    && schedule.getEventDate().isAfter(now.plusHours(23))
+                    && schedule.getEventDate().isBefore(now.plusDays(1))) {
+
+                if (schedule.getHorseId() != null) {
+                    horseRepository.findById(schedule.getHorseId()).ifPresent(horse -> {
+                        if (horse.getManagerId() != null) {
+                            userRepository.findByUsername(horse.getManagerId()).ifPresent(user -> {
+                                if (user.getFcmToken() != null && !user.getFcmToken().isEmpty()) {
+                                    fcmService.sendPush(
+                                            user.getFcmToken(),
+                                            "일정 알림",
+                                            schedule.getEventDate().getMonthValue() + "월 "
+                                                    + schedule.getEventDate().getDayOfMonth() + "일 "
+                                                    + schedule.getEventDate().getHour() + "시 | "
+                                                    + horse.getName() + " " + schedule.getTitle()
+                                    );
+                                }
+                            });
+                        }
+                    });
+                }
+
+                schedule.setNotified(true);
+                scheduleRepository.save(schedule);
+
+                System.out.println("[FCM] 알림 발송 완료 - " + schedule.getTitle());
             }
         }
     }
