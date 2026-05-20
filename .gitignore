@@ -41,3 +41,5 @@ uploads/
 /backend-ai/videos/
 /backend-ai/images/
 docker-compose.override.yml
+
+firebase-service-account.json
