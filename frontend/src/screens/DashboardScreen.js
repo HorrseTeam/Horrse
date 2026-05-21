@@ -1,72 +1,135 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, ScrollView } from 'react-native';
-import { LineChart } from 'react-native-chart-kit';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import axios from 'axios';
+import { useFocusEffect } from '@react-navigation/native';
 import API_URL from '../config/api';
 
-export default function DashboardScreen() {
-  const [diagnoses, setDiagnoses] = useState([]);
+export default function DashboardScreen({ navigation }) {
+  const [recentDiagnoses, setRecentDiagnoses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-     // Fetch the real PostgreSQL database results
-     axios.get(`${API_URL}/diagnosis/1`)
-       .then(res => setDiagnoses(res.data))
-       .catch(err => console.log('Dashboard DB Error:', err));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const fetchRecentData = async () => {
+        try {
+          const res = await axios.get(`${API_URL}/diagnosis/recent`); 
+          if (res.data && res.data.length > 0) {
+            setRecentDiagnoses(res.data.slice(0, 5));
+          } else {
+            setRecentDiagnoses([]);
+          }
+        } catch (err) {
+          console.error('Dashboard 데이터 로드 실패:', err);
+          Alert.alert("연동 에러", "실시간 시스템 현황을 가져오지 못했습니다.");
+          setRecentDiagnoses([]);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-  // For chart data we could show lameness risk over time or hoof grades.
-  // Using dummy trend line for general health for now unless we derive scores.
-  const chartData = {
-    labels: ['1주차', '2주차', '3주차', '4주차', '5주차', '6주차'],
-    datasets: [{ data: [37.5, 37.8, 38.0, 37.6, 37.9, 38.2], strokeWidth: 2 }],
-  };
+      fetchRecentData();
+    }, [])
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4f6ef7" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>건강 대시보드 (체온 추이)</Text>
-      
-      <View style={styles.chartContainer}>
-        <LineChart
-          data={chartData}
-          width={Dimensions.get('window').width - 32}
-          height={220}
-          yAxisSuffix="°C"
-          chartConfig={{
-            backgroundColor: '#ffffff',
-            backgroundGradientFrom: '#ffffff',
-            backgroundGradientTo: '#ffffff',
-            decimalPlaces: 1,
-            color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            style: { borderRadius: 16 },
-            propsForDots: { r: '6', strokeWidth: '2', stroke: '#ffa726' },
-          }}
-          bezier style={{ marginVertical: 8, borderRadius: 16 }}
-        />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>말 관리 시스템 현황</Text>
+        <Text style={styles.headerSubtitle}>전체 마필의 최근 진단 요약입니다.</Text>
       </View>
 
-      <Text style={styles.title}>최근 AI 분석 이력 (DB 연동)</Text>
-      {diagnoses.length > 0 ? (
-          diagnoses.map((diag, idx) => (
-             <View key={idx} style={styles.recordCard}>
-                <Text style={styles.recordTitle}>파행 진단: {diag.isLameness ? '이상 감지(Y)' : '정상(N)'}</Text>
-                <Text>보행 모드: {diag.walkType}</Text>
-                <Text style={styles.dateText}>{new Date(diag.createdAt).toLocaleString()}</Text>
-             </View>
+      <View style={styles.summarySection}>
+        <Text style={styles.sectionTitle}>최근 AI 분석 알림</Text>
+        {recentDiagnoses.length > 0 ? (
+          recentDiagnoses.map((diag, idx) => (
+            <TouchableOpacity 
+              key={`${diag.horseId}-${idx}`} 
+              style={[
+                styles.miniCard, 
+                { borderLeftColor: diag.isLameness ? '#f44336' : '#10b981' }
+              ]}
+              onPress={() => navigation.navigate('DashboardDetail', { 
+                horse: {
+                  id: diag.horseId,
+                  name: diag.horseName,
+                  breed: diag.breed || '제주마'
+                } 
+              })}
+            >
+              <View style={styles.cardContent}>
+                <Text style={styles.horseName}>{diag.horseName} <Text style={styles.horseId}>#ID {diag.horseId}</Text></Text>
+                <Text style={styles.diagSummary}>
+                  {diag.analysisType === 'hoof' ? '🐾 발굽 분석' : '🦿 파행 진단'}: 
+                  <Text style={{ fontWeight: '700', color: diag.isLameness ? '#f44336' : '#10b981' }}>
+                    {diag.isLameness ? ' 이상 감지' : ' 정상'}
+                  </Text>
+                </Text>
+              </View>
+              <Text style={styles.arrow}>〉</Text>
+            </TouchableOpacity>
           ))
-      ) : (
-          <Text style={{marginLeft: 10, color: '#888'}}>조회된 훈련/진단 데이터가 없습니다.</Text>
-      )}
+        ) : (
+          <Text style={styles.noDataText}>최근 진단 데이터가 없습니다.</Text>
+        )}
+      </View>
+
+      <TouchableOpacity 
+        style={styles.actionButton}
+        onPress={() => navigation.navigate('HorseList')}
+      >
+        <Text style={styles.actionButtonText}>전체 마필 목록 보기</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
-  title: { fontSize: 20, fontWeight: 'bold', marginVertical: 12, color: '#333' },
-  chartContainer: { backgroundColor: '#fff', borderRadius: 16, padding: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-  recordCard: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: '#f44336', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-  recordTitle: { fontSize: 16, fontWeight: '600', color: '#2b2b2b', marginBottom: 4 },
-  dateText: { fontSize: 12, color: '#888', marginTop: 8 }
+  container: { flex: 1, backgroundColor: '#f8faff' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8faff' },
+  header: { padding: 24, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#1e2d6b' },
+  headerSubtitle: { fontSize: 14, color: '#94a3b8', marginTop: 4 },
+  summarySection: { padding: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1e2d6b', marginBottom: 16 },
+  miniCard: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    backgroundColor: '#fff', 
+    padding: 16, 
+    borderRadius: 12, 
+    marginBottom: 10, 
+    borderLeftWidth: 4,
+    shadowColor: '#4f6ef7',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2 
+  },
+  cardContent: { flex: 1 },
+  horseName: { fontSize: 15, fontWeight: '600', color: '#1e293b' },
+  horseId: { fontSize: 12, color: '#94a3b8', fontWeight: 'normal' },
+  diagSummary: { fontSize: 13, color: '#64748b', marginTop: 4 },
+  arrow: { fontSize: 16, color: '#cbd5e1', fontWeight: 'bold', paddingLeft: 8 },
+  noDataText: { textAlign: 'center', color: '#94a3b8', marginTop: 20, backgroundColor: '#fff', padding: 20, borderRadius: 12 },
+  actionButton: { 
+    marginHorizontal: 20, 
+    marginVertical: 10,
+    backgroundColor: '#4f6ef7', 
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    shadowColor: '#4f6ef7',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3
+  },
+  actionButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });
-

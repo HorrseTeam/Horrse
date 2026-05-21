@@ -1,22 +1,60 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, Modal, Platform
+  TextInput, Alert, Modal, Platform, Pressable
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications'; 
 import API_URL from '../config/api';
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+const formatDateString = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const DEFAULT_HORSES = [
+  { id: 1, name: "강풍", breed: "더러브렛" },
+  { id: 2, name: "감귤이", breed: "제주마" },
+  { id: 3, name: "샛별", breed: "제주마" },
+  { id: 4, name: "에이스", breed: "더러브렛" },
+  { id: 5, name: "태풍", breed: "더러브렛" },
+];
+
+const DEFAULT_SCHEDULES = [
+  { id: 101, horseId: 1, title: "정기 편자 교체 및 장제", description: "앞발굽 편자 마모 심함. 새 편자로 교체.", eventDate: "2026-05-17T14:00:00" },
+  { id: 102, horseId: 2, title: "파행(절뚝거림) 정밀 진단", description: "좌측 전지 보양 이상 점검.", eventDate: "2026-05-17T16:30:00" },
+  { id: 103, horseId: 3, title: "인플루엔자 정기 예방접종", description: "상반기 정기 독감 예방 백신 접종일.", eventDate: "2026-05-18T10:00:00" },
+  { id: 104, horseId: 4, title: "정기 구충제 투약", description: "분기별 종합 구충제 투여.", eventDate: "2026-05-20T09:00:00" },
+  { id: 105, horseId: 5, title: "원인 불명 파행 재진", description: "겔 패드 장착 후 보양 개선 여부 확인.", eventDate: "2026-05-22T15:00:00" },
+  { id: 106, horseId: 1, title: "정기 훈련 및 주로 적응", description: "장제 후 첫 경속보 훈련.", eventDate: "2026-05-25T11:00:00" },
+];
+
+const TIME_OPTIONS = [
+  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+  '19:00', '20:00', '21:00',
+];
 
 export default function NewCalendarScreen() {
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(formatDateString(new Date()));
   const [schedules, setSchedules] = useState([]);
   const [horses, setHorses] = useState([]);
-  const [viewMode, setViewMode] = useState('month'); // 'month' | 'week'
+  const [viewMode, setViewMode] = useState('month');
+  const [weekOffset, setWeekOffset] = useState(0);
   const [showModal, setShowModal] = useState(false);
 
-  // 등록 폼 상태
   const [formHorseId, setFormHorseId] = useState(null);
   const [formTitle, setFormTitle] = useState('');
   const [formContent, setFormContent] = useState('');
@@ -25,165 +63,265 @@ export default function NewCalendarScreen() {
   const [showHorsePicker, setShowHorsePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const TIME_OPTIONS = [
-    '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-    '19:00', '20:00', '21:00'
-  ];
+  const deletedIds = useRef(new Set());
+  const initializedFromServer = useRef(false);
+
+  // 🎯 [수정] 기기 알림 권한 요청 시 undefined 변수 에러 핸들링 완료
+  useEffect(() => {
+    (async () => {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== 'granted') {
+        console.log('푸시 알림 권한 거부됨');
+        return;
+      }
+
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('high_importance_channel', {
+          name: '중요 일정 알림',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#4f6ef7',
+        });
+      }
+    })();
+  }, []);
+
+  // 🎯 [수정] 알림 예약 로직 고도화 (안드로이드 채널 및 트리거 포맷 보정)
+  const schedule24HoursBeforeAlarm = async (title, horseName, eventDateString) => {
+    try {
+      const targetTime = new Date(eventDateString); 
+      const now = new Date();
+
+      // 정확히 일정 24시간 전 시각 계산
+      const alarmTimeInMs = targetTime.getTime() - (24 * 60 * 60 * 1000);
+      const alarmDate = new Date(alarmTimeInMs);
+
+      // [공통 알림 콘텐츠 구조 정의]
+      const notificationContent = {
+        title: `🐴 [일정 알림] ${horseName} - 24시간 전`,
+        body: `'${title}' 일정이 24시간 후에 시작됩니다. 준비 상태를 확인하세요!`,
+        sound: true,
+        android: {
+          channelId: 'high_importance_channel', // 안드로이드 필수 필드 누락 보완
+        },
+      };
+
+      // 1. 계산된 알림 시간이 이미 지난 과거인 경우 -> 즉시 발송
+      if (alarmDate <= now) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `🐴 [일정 등록 완료] ${horseName}`,
+            body: `임박한 일정 '${title}'이(가) 등록되었습니다! (일정 시작: ${targetTime.toLocaleString()})`,
+            sound: true,
+            android: { channelId: 'high_importance_channel' },
+          },
+          trigger: { seconds: 1 }, 
+        });
+        console.log("이미 지난 과거 시점이므로 등록한 현재 시간에 즉시 알림을 발송합니다.");
+      } else {
+        // 2. 정상 케이스 -> 미래의 특정 타임스탬프 시점에 예약
+        await Notifications.scheduleNotificationAsync({
+          content: notificationContent,
+          trigger: { date: alarmDate }, // 유효성 높은 객체 형태 트리거 지정
+        });
+        console.log(`정상 알림 예약 완료 (일정 24시간 전): ${alarmDate.toLocaleString()}`);
+      }
+    } catch (error) {
+      console.log('푸시 알림 스케줄링 실패:', error);
+    }
+  };
+
+  const applySchedules = useCallback((raw) => {
+    setSchedules(raw.filter(s => !deletedIds.current.has(s.id)));
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
-      const [horsesRes] = await Promise.all([
-        axios.get(`${API_URL}/horses`),
-      ]);
+      const horsesRes = await axios.get(`${API_URL}/horses`);
       setHorses(horsesRes.data);
-
-      // 등록된 말들의 일정 모두 가져오기
       const scheduleResults = await Promise.all(
-        horsesRes.data.map(h =>
-          axios.get(`${API_URL}/schedules/horse/${h.id}`).catch(() => ({ data: [] }))
-        )
+        horsesRes.data.map(h => axios.get(`${API_URL}/schedules/horse/${h.id}`))
       );
       const allSchedules = scheduleResults.flatMap(r => r.data);
-      setSchedules(allSchedules);
-    } catch (error) {
-      console.log('데이터 로드 실패:', error);
+      initializedFromServer.current = true;
+      applySchedules(allSchedules);
+    } catch {
+      setHorses(DEFAULT_HORSES);
+      if (!initializedFromServer.current) {
+        applySchedules(DEFAULT_SCHEDULES);
+        initializedFromServer.current = true;
+      }
     }
-  }, []);
+  }, [applySchedules]);
 
   useFocusEffect(
-    useCallback(() => {
-      fetchData();
-    }, [fetchData])
+    useCallback(() => { fetchData(); }, [fetchData])
   );
 
-const handleAddSchedule = async () => {
+  const resetForm = () => {
+    setFormTitle('');
+    setFormContent('');
+    setFormDate('');
+    setFormTime('10:00');
+    setFormHorseId(null);
+    setShowModal(false);
+    setShowHorsePicker(false);
+    setShowTimePicker(false);
+  };
+
+  const handleAddSchedule = async () => {
     if (!formHorseId) { Alert.alert('알림', '말을 선택해주세요!'); return; }
-    if (!formTitle) { Alert.alert('알림', '일정 제목을 입력해주세요!'); return; }
+    if (!formTitle.trim()) { Alert.alert('알림', '일정 제목을 입력해주세요!'); return; }
     if (!formDate) { Alert.alert('알림', '날짜를 선택해주세요!'); return; }
 
-    // 실제 권한 체크 라이브러리가 없다면, 테스트를 위해 true/false를 바꿔보며 확인할 수 있습니다.
-    const isNotificationDenied = false; // 만약 권한 거부 상태라면 true로직 실행
-
-    if (isNotificationDenied && Platform.OS === 'android') {
-      ToastAndroid.show(
-        '알림을 받으려면 기기 설정에서 알림을 허용해 주세요',
-        ToastAndroid.LONG
-      );
-    }
+    const eventDate = `${formDate}T${formTime}:00`;
+    const horseName = getHorseName(formHorseId);
 
     try {
-      await axios.post(`${API_URL}/schedules`, {
-        horseId: formHorseId,
-        title: formTitle,
-        description: formContent,
-        eventDate: `${formDate}T${formTime}:00`,
-        notify: true, // 유즈케이스: 전날 알림 자동 예약
+      const res = await axios.post(`${API_URL}/schedules`, {
+        horseId: formHorseId, title: formTitle,
+        description: formContent, eventDate, notify: true,
       });
+      setSchedules(prev => [res.data, ...prev]);
       
+      await schedule24HoursBeforeAlarm(formTitle, horseName, eventDate);
       Alert.alert('성공', '일정이 등록되었습니다!');
-      
-      // 등록 후 초기화 로직
-      setFormTitle('');
-      setFormContent('');
-      setFormDate('');
-      setFormTime('10:00');
-      setFormHorseId(null);
-      setShowModal(false);
-      fetchData();
-    } catch (error) {
-      Alert.alert('에러', '일정 등록에 실패했습니다.');
+    } catch {
+      setSchedules(prev => [{
+        id: Date.now(), horseId: formHorseId,
+        title: formTitle, description: formContent, eventDate,
+      }, ...prev]);
+
+      await schedule24HoursBeforeAlarm(formTitle, horseName, eventDate);
+      Alert.alert('성공', '임시 일정이 등록되었습니다!');
     }
+    resetForm();
   };
 
-  // 마킹 데이터
-  const marks = {};
-  schedules.forEach(s => {
-    if (!s.eventDate) return;
-    const dateKey = s.eventDate.split('T')[0];
-    marks[dateKey] = {
-      marked: true,
-      dotColor: '#f97316',
-      schedules: [...(marks[dateKey]?.schedules || []), s],
-    };
-  });
-
-  const currentMarkings = {
-    ...marks,
-    ...(selected
-      ? {
-          [selected]: {
-            ...(marks[selected] || {}),
-            selected: true,
-            selectedColor: '#4f6ef7',
-            selectedTextColor: '#fff',
+  const handleDeleteSchedule = useCallback((id, title) => {
+    Alert.alert(
+      '일정 삭제',
+      `'${title}' 일정을 삭제하시겠습니까?`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () => {
+            deletedIds.current.add(id);
+            setSchedules(prev => prev.filter(item => item.id !== id));
+            axios.delete(`${API_URL}/schedules/${id}`).catch(() => {
+              console.log(`서버 삭제 실패: id=${id}, 로컬 삭제 유지`);
+            });
+            Alert.alert('성공', '일정이 삭제되었습니다.');
           },
-        }
-      : {}),
-  };
-
-  const selectedSchedules = selected && marks[selected]?.schedules
-    ? marks[selected].schedules
-    : schedules
-        .filter(s => s.eventDate?.split('T')[0] === selected)
-        .slice(0, 5);
+        },
+      ]
+    );
+  }, []);
 
   const getHorseName = (horseId) => {
     const h = horses.find(h => h.id === horseId);
     return h ? h.name : `말 #${horseId}`;
   };
 
-  // 현재 주 날짜 계산 (주간 뷰용 간단 표시)
-  const getWeekDays = () => {
+  const getWeekDays = useCallback((offset = 0) => {
     const today = new Date();
-    const days = [];
-    const start = new Date(today);
-    start.setDate(today.getDate() - today.getDay());
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      days.push(d);
-    }
-    return days;
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() - today.getDay() + offset);
+    sunday.setHours(0, 0, 0, 0);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
+      return d;
+    });
+  }, []);
+
+  const getWeekRangeLabel = (days) => {
+    const fmt = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일`;
+    return `${fmt(days[0])} ~ ${fmt(days[6])}`;
   };
 
-  const weekDays = getWeekDays();
+  const weekDays = getWeekDays(weekOffset);
   const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+
+  const marks = {};
+  schedules.forEach(s => {
+    if (!s.eventDate) return;
+    const dateKey = s.eventDate.split('T')[0];
+    marks[dateKey] = { marked: true, dotColor: '#f97316' };
+  });
+
+  const currentMarkings = {
+    ...marks,
+    ...(selected ? {
+      [selected]: {
+        ...(marks[selected] || {}),
+        selected: true,
+        selectedColor: '#4f6ef7',
+        selectedTextColor: '#fff',
+      },
+    } : {}),
+  };
+
+  const selectedSchedules = schedules.filter(
+    s => s.eventDate && s.eventDate.split('T')[0] === selected
+  );
 
   return (
     <View style={styles.container}>
-      {/* 헤더 */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>일정</Text>
+        <View>
+          <Text style={styles.headerTitle}>일정 관리</Text>
+          <Text style={styles.headerSub}>말들의 주요 일정을 확인하고 관리하세요</Text>
+        </View>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => { setFormDate(selected || ''); setShowModal(true); }}
+          onPress={() => { setFormDate(selected || formatDateString(new Date())); setShowModal(true); }}
         >
           <Text style={styles.addButtonText}>+ 등록</Text>
         </TouchableOpacity>
       </View>
 
-      {/* 뷰 전환 탭 */}
       <View style={styles.viewToggle}>
-        <TouchableOpacity
-          style={[styles.toggleBtn, viewMode === 'month' && styles.toggleBtnActive]}
-          onPress={() => setViewMode('month')}
-        >
-          <Text style={[styles.toggleText, viewMode === 'month' && styles.toggleTextActive]}>월간</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleBtn, viewMode === 'week' && styles.toggleBtnActive]}
-          onPress={() => setViewMode('week')}
-        >
-          <Text style={[styles.toggleText, viewMode === 'week' && styles.toggleTextActive]}>주간</Text>
-        </TouchableOpacity>
+        {['month', 'week'].map(mode => (
+          <TouchableOpacity
+            key={mode}
+            style={[styles.toggleBtn, viewMode === mode && styles.toggleBtnActive]}
+            onPress={() => {
+              setViewMode(mode);
+              if (mode === 'week') {
+                const today = new Date();
+                const selDate = selected ? new Date(selected + 'T00:00:00') : today;
+                const todaySunday = new Date(today);
+                todaySunday.setDate(today.getDate() - today.getDay());
+                todaySunday.setHours(0, 0, 0, 0);
+                const selSunday = new Date(selDate);
+                selSunday.setDate(selDate.getDate() - selDate.getDay());
+                selSunday.setHours(0, 0, 0, 0);
+                setWeekOffset(Math.round((selSunday - todaySunday) / 86400000));
+              }
+            }}
+          >
+            <Text style={[styles.toggleText, viewMode === mode && styles.toggleTextActive]}>
+              {mode === 'month' ? '월간' : '주간'}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <ScrollView>
-        {/* 월간 캘린더 */}
         {viewMode === 'month' && (
           <View style={styles.calendarCard}>
             <Calendar
+              current={selected || undefined}
               onDayPress={day => setSelected(day.dateString)}
               markedDates={currentMarkings}
               theme={{
@@ -199,30 +337,45 @@ const handleAddSchedule = async () => {
           </View>
         )}
 
-        {/* 주간 뷰 */}
         {viewMode === 'week' && (
           <View style={styles.weekCard}>
+            <View style={styles.weekNavRow}>
+              <TouchableOpacity style={styles.weekNavBtn} onPress={() => setWeekOffset(p => p - 7)}>
+                <Text style={styles.weekNavArrow}>‹</Text>
+              </TouchableOpacity>
+              <Text style={styles.weekRangeLabel}>{getWeekRangeLabel(weekDays)}</Text>
+              <TouchableOpacity style={styles.weekNavBtn} onPress={() => setWeekOffset(p => p + 7)}>
+                <Text style={styles.weekNavArrow}>›</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.weekRow}>
               {weekDays.map((d, i) => {
-                const dateStr = d.toISOString().split('T')[0];
-                const hasEvent = !!marks[dateStr];
+                const dateStr = formatDateString(d);
                 const isSelected = dateStr === selected;
-                const isToday = dateStr === new Date().toISOString().split('T')[0];
+                const isToday = dateStr === formatDateString(new Date());
                 return (
-                  <TouchableOpacity
-                    key={i}
-                    style={[styles.weekDay, isSelected && styles.weekDaySelected]}
-                    onPress={() => setSelected(dateStr)}
-                  >
-                    <Text style={[styles.weekDayLabel, i === 0 && { color: '#ef4444' }, i === 6 && { color: '#3b82f6' }]}>
+                  <TouchableOpacity key={i} style={styles.weekDay} onPress={() => setSelected(dateStr)}>
+                    <Text style={[
+                      styles.weekDayLabel,
+                      i === 0 && { color: '#ef4444' },
+                      i === 6 && { color: '#3b82f6' },
+                    ]}>
                       {dayLabels[i]}
                     </Text>
-                    <View style={[styles.weekDateCircle, isSelected && styles.weekDateCircleSelected, isToday && !isSelected && styles.weekDateCircleToday]}>
-                      <Text style={[styles.weekDateNum, isSelected && { color: '#fff' }, isToday && !isSelected && { color: '#f97316' }]}>
+                    <View style={[
+                      styles.weekDateCircle,
+                      isSelected && styles.weekDateCircleSelected,
+                      isToday && !isSelected && styles.weekDateCircleToday,
+                    ]}>
+                      <Text style={[
+                        styles.weekDateNum,
+                        isSelected && { color: '#fff' },
+                        isToday && !isSelected && { color: '#f97316' },
+                      ]}>
                         {d.getDate()}
                       </Text>
                     </View>
-                    {hasEvent && <View style={styles.weekDot} />}
+                    {marks[dateStr] && <View style={styles.weekDot} />}
                   </TouchableOpacity>
                 );
               })}
@@ -230,38 +383,40 @@ const handleAddSchedule = async () => {
           </View>
         )}
 
-        {/* 선택된 날짜 일정 */}
-        {selected ? (
-          <View style={styles.scheduleSection}>
-            <Text style={styles.selectedDate}>{selected} 일정</Text>
-            {selectedSchedules.length > 0 ? (
-              selectedSchedules.map((s, idx) => (
-                <View key={idx} style={styles.scheduleCard}>
-                  <View style={styles.scheduleTimeBar} />
-                  <View style={styles.scheduleBody}>
-                    <View style={styles.scheduleTop}>
-                      <Text style={styles.scheduleTitle}>{s.title}</Text>
-                      <Text style={styles.scheduleHorse}>🐴 {getHorseName(s.horseId)}</Text>
-                    </View>
-                    {s.description ? (
-                      <Text style={styles.scheduleContent}>{s.description}</Text>
-                    ) : null}
+        <View style={styles.scheduleSection}>
+          <Text style={styles.selectedDate}>{selected || formatDateString(new Date())} 일정</Text>
+          {selectedSchedules.length > 0 ? (
+            selectedSchedules.map((s, idx) => (
+              <View key={`${s.id}-${idx}`} style={styles.scheduleCard}>
+                
+                <Pressable
+                  style={styles.deleteIconButton}
+                  onPress={() => handleDeleteSchedule(s.id, s.title)}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                >
+                  <Text style={styles.deleteIconText}>🗑️</Text>
+                </Pressable>
+
+                <View style={styles.scheduleTimeBar} />
+                <View style={styles.scheduleBody}>
+                  <View style={styles.scheduleTop}>
+                    <Text style={styles.scheduleTitle} numberOfLines={1}>{s.title}</Text>
+                  </View>
+                  {s.description ? <Text style={styles.scheduleContent}>{s.description}</Text> : null}
+                  <View style={styles.scheduleBottomRow}>
                     <Text style={styles.scheduleTime}>
                       🕐 {s.eventDate ? s.eventDate.replace('T', ' ').slice(0, 16) : '-'}
                     </Text>
+                    <Text style={styles.scheduleHorseInline}>🐴 {getHorseName(s.horseId)}</Text>
                   </View>
                 </View>
-              ))
-            ) : (
-              <Text style={styles.noSchedule}>등록된 일정이 없습니다.</Text>
-            )}
-          </View>
-        ) : (
-          <View style={styles.placeholderSection}>
-            <Text style={styles.placeholderIcon}>📅</Text>
-            <Text style={styles.placeholderText}>날짜를 선택하면 일정을 {'\n' } 확인하거나 추가할 수 있습니다.</Text>
-          </View>
-        )}
+
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noSchedule}>등록된 일정이 없습니다.</Text>
+          )}
+        </View>
       </ScrollView>
 
       {/* 일정 등록 모달 */}
@@ -270,18 +425,13 @@ const handleAddSchedule = async () => {
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>일정 등록</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
+              <TouchableOpacity onPress={resetForm}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
-
-            <ScrollView>
-              {/* 말 선택 */}
+            <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.formLabel}>말 선택 *</Text>
-              <TouchableOpacity
-                style={styles.dropdown}
-                onPress={() => setShowHorsePicker(!showHorsePicker)}
-              >
+              <TouchableOpacity style={styles.dropdown} onPress={() => setShowHorsePicker(p => !p)}>
                 <Text style={formHorseId ? styles.dropdownSelected : styles.dropdownPlaceholder}>
                   {formHorseId ? getHorseName(formHorseId) : '말을 선택해주세요'}
                 </Text>
@@ -303,7 +453,6 @@ const handleAddSchedule = async () => {
                 </View>
               )}
 
-              {/* 제목 */}
               <Text style={styles.formLabel}>일정 제목 *</Text>
               <TextInput
                 style={styles.input}
@@ -312,7 +461,6 @@ const handleAddSchedule = async () => {
                 onChangeText={setFormTitle}
               />
 
-              {/* 세부 내용 */}
               <Text style={styles.formLabel}>세부 내용</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
@@ -323,22 +471,17 @@ const handleAddSchedule = async () => {
                 numberOfLines={3}
               />
 
-              {/* 날짜 */}
               <Text style={styles.formLabel}>날짜 *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="YYYY-MM-DD (예: 2025-05-01)"
+                placeholder="YYYY-MM-DD (예: 2026-05-18)"
                 value={formDate}
                 onChangeText={setFormDate}
                 keyboardType="numeric"
               />
 
-              {/* 시간 선택 */}
               <Text style={styles.formLabel}>시각</Text>
-              <TouchableOpacity
-                style={styles.dropdown}
-                onPress={() => setShowTimePicker(!showTimePicker)}
-              >
+              <TouchableOpacity style={styles.dropdown} onPress={() => setShowTimePicker(p => !p)}>
                 <Text style={styles.dropdownSelected}>🕐 {formTime}</Text>
                 <Text style={styles.dropdownArrow}>{showTimePicker ? '▲' : '▼'}</Text>
               </TouchableOpacity>
@@ -356,7 +499,6 @@ const handleAddSchedule = async () => {
                 </View>
               )}
             </ScrollView>
-
             <TouchableOpacity style={styles.submitButton} onPress={handleAddSchedule}>
               <Text style={styles.submitButtonText}>등록</Text>
             </TouchableOpacity>
@@ -370,161 +512,89 @@ const handleAddSchedule = async () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9ff' },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#4f6ef7',
-    paddingTop: 16,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#4f6ef7', paddingTop: 16, paddingBottom: 20, paddingHorizontal: 20,
   },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
-  addButton: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-  },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
+  addButton: { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
   addButtonText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  viewToggle: {
-    flexDirection: 'row',
-    backgroundColor: '#e8eeff',
-    margin: 16,
-    borderRadius: 12,
-    padding: 4,
-  },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: 9,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
+  viewToggle: { flexDirection: 'row', backgroundColor: '#e8eeff', margin: 16, borderRadius: 12, padding: 4 },
+  toggleBtn: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 10 },
   toggleBtnActive: { backgroundColor: '#4f6ef7' },
   toggleText: { fontWeight: '600', color: '#6b7cbe' },
   toggleTextActive: { color: '#fff' },
   calendarCard: {
-    marginHorizontal: 16,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#4f6ef7',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: 16,
+    marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden',
+    shadowColor: '#4f6ef7', shadowOpacity: 0.08, shadowRadius: 8, elevation: 3, marginBottom: 16,
   },
   weekCard: {
-    marginHorizontal: 16,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#4f6ef7',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: 16,
+    marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 16, padding: 16,
+    shadowColor: '#4f6ef7', shadowOpacity: 0.08, shadowRadius: 8, elevation: 3, marginBottom: 16,
   },
+  weekNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  weekNavBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#e8eeff', justifyContent: 'center', alignItems: 'center' },
+  weekNavArrow: { fontSize: 22, color: '#4f6ef7', fontWeight: 'bold', lineHeight: 26 },
+  weekRangeLabel: { fontSize: 14, fontWeight: '700', color: '#1e2d6b' },
   weekRow: { flexDirection: 'row', justifyContent: 'space-around' },
   weekDay: { alignItems: 'center', flex: 1 },
-  weekDaySelected: {},
   weekDayLabel: { fontSize: 12, fontWeight: '600', color: '#64748b', marginBottom: 6 },
-  weekDateCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  weekDateCircle: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   weekDateCircleSelected: { backgroundColor: '#4f6ef7' },
   weekDateCircleToday: { borderWidth: 2, borderColor: '#f97316' },
   weekDateNum: { fontSize: 15, fontWeight: '600', color: '#1e2d6b' },
   weekDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#f97316', marginTop: 4 },
-  scheduleSection: { paddingHorizontal: 16 },
+  scheduleSection: { paddingHorizontal: 16, marginTop: 10, paddingBottom: 32 },
   selectedDate: { fontSize: 15, fontWeight: '700', color: '#1e2d6b', marginBottom: 12 },
   scheduleCard: {
+    position: 'relative',
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 14,
     marginBottom: 10,
-    overflow: 'hidden',
     shadowColor: '#4f6ef7',
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 2,
   },
-  scheduleTimeBar: { width: 5, backgroundColor: '#4f6ef7' },
+  scheduleTimeBar: { width: 5, backgroundColor: '#4f6ef7', borderTopLeftRadius: 14, borderBottomLeftRadius: 14 },
   scheduleBody: { flex: 1, padding: 14 },
-  scheduleTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  scheduleTitle: { fontSize: 15, fontWeight: '700', color: '#1e2d6b', flex: 1 },
-  scheduleHorse: { fontSize: 12, color: '#f97316', fontWeight: '600' },
-  scheduleContent: { fontSize: 13, color: '#64748b', marginBottom: 4 },
-  scheduleTime: { fontSize: 12, color: '#94a3b8' },
-  noSchedule: { color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 16 },
-  placeholderSection: { alignItems: 'center', padding: 40 },
-  placeholderIcon: { fontSize: 48, marginBottom: 12 },
-  placeholderText: { color: '#94a3b8', textAlign: 'center', fontSize: 14 },
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  scheduleTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  scheduleTitle: { fontSize: 15, fontWeight: '700', color: '#1e2d6b', flex: 1, marginRight: 35 }, 
+  deleteIconButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    padding: 10,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    minWidth: 44,
+    minHeight: 44,
+    zIndex: 999,
+    backgroundColor: 'transparent',
   },
+  deleteIconText: { fontSize: 18 },
+  scheduleContent: { fontSize: 13, color: '#64748b', marginBottom: 8, lineHeight: 18, marginRight: 25 },
+  scheduleBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  scheduleTime: { fontSize: 12, color: '#94a3b8' },
+  scheduleHorseInline: { fontSize: 12, color: '#f97316', fontWeight: '600' },
+  noSchedule: { color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 20, backgroundColor: '#fff', borderRadius: 14 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1e2d6b' },
   modalClose: { fontSize: 22, color: '#94a3b8' },
   formLabel: { fontSize: 13, fontWeight: '600', color: '#64748b', marginBottom: 6, marginTop: 12 },
-  input: {
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    color: '#1e293b',
-    backgroundColor: '#f8faff',
-  },
+  input: { borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 15, color: '#1e293b', backgroundColor: '#f8faff' },
   inputMultiline: { height: 80, textAlignVertical: 'top' },
-  dropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    padding: 12,
-    backgroundColor: '#f8faff',
-  },
+  dropdown: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, backgroundColor: '#f8faff' },
   dropdownSelected: { fontSize: 15, color: '#1e293b' },
   dropdownPlaceholder: { fontSize: 15, color: '#94a3b8' },
   dropdownArrow: { fontSize: 12, color: '#94a3b8' },
-  dropdownList: {
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    marginTop: 4,
-    backgroundColor: '#fff',
-    overflow: 'hidden',
-  },
+  dropdownList: { borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 10, marginTop: 4, backgroundColor: '#fff', overflow: 'hidden' },
   dropdownItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   dropdownItemActive: { backgroundColor: '#4f6ef7' },
   dropdownItemText: { fontSize: 14, color: '#1e293b' },
-  submitButton: {
-    backgroundColor: '#4f6ef7',
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 20,
-  },
+  submitButton: { backgroundColor: '#4f6ef7', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 20 },
   submitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });
