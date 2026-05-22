@@ -19,7 +19,7 @@ export default function HorseProfileScreen() {
   const [day, setDay] = useState(18);
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [activeType, setActiveType] = useState('year'); 
+  const [activeType, setActiveType] = useState('year');
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
@@ -72,7 +72,7 @@ export default function HorseProfileScreen() {
   };
 
   const handleRegister = async () => {
-    const birthDateStr = getFormattedBirthDate(); 
+    const birthDateStr = getFormattedBirthDate();
 
     if (!name.trim() || !breed.trim() || !registrationNumber.trim()) {
       Alert.alert("알림", "모든 필수 항목을 입력해주세요.");
@@ -82,17 +82,17 @@ export default function HorseProfileScreen() {
     const finalManager = manager.trim() === '' ? '미지정' : manager.trim();
 
     try {
-      await axios.post(`${API_URL}/horses`, { 
-        name: name.trim(), 
-        breed: breed.trim(), 
-        birthDate: birthDateStr, 
+      await axios.post(`${API_URL}/horses`, {
+        name: name.trim(),
+        breed: breed.trim(),
+        birthDate: birthDateStr,
         gender,
-        registrationNumber: registrationNumber.trim(), 
+        registrationNumber: registrationNumber.trim(),
         manager: finalManager
       });
 
       Alert.alert("성공", `${name}이(가) 등록되었습니다.`);
-      
+
       // 입력 폼 초기화 및 기본값 재포지셔닝
       setName('');
       setBreed('');
@@ -102,12 +102,12 @@ export default function HorseProfileScreen() {
       setYear(2026);
       setMonth(5);
       setDay(18);
-      
+
       // 등록 후 리스트 동적 리프레시
       fetchHorses();
     } catch (error) {
       console.error("말 등록 에러:", error);
-      Alert.alert("등록 실패", "서버 통신 중 문제가 발생하여 마필을 등록하지 못했습니다.");
+      Alert.alert("등록 실패", "서버 통신 중 문제가 발생하여 말을 등록하지 못했습니다.");
     }
   };
 
@@ -115,62 +115,62 @@ export default function HorseProfileScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>말 등록</Text>
-        <Text style={styles.headerSub}>새로운 마필 정보를 입력해주세요</Text>
+        <Text style={styles.headerSub}>새로운 말 정보를 입력해주세요</Text>
       </View>
-    
+
       <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: 40 }}>
         <Text style={styles.title}>신규 말 등록</Text>
         <View style={styles.card}>
-          
-          <Text style={styles.label}>담당 관리사 이름</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="예: 홍길동" 
+
+          <Text style={styles.label}>담당 관리자</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="예: 홍길동"
             value={manager}
             onChangeText={setManager}
           />
 
-          <Text style={styles.label}>마적 등록번호 *</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="예: KOR012345" 
+          <Text style={styles.label}>등록번호 *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="예: KOR012345"
             value={registrationNumber}
             onChangeText={setRegistrationNumber}
             autoCapitalize="characters" // 등록번호 영문 대문자 자동 전환
           />
 
-          <Text style={styles.label}>마필 이름 *</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="예: 호올스" 
+          <Text style={styles.label}>말 이름 *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="예: 호올스"
             value={name}
             onChangeText={setName}
           />
-          
+
           <Text style={styles.label}>품종 *</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="예: 더러브렛, 제주마" 
+          <TextInput
+            style={styles.input}
+            placeholder="예: 더러브렛, 제주마"
             value={breed}
             onChangeText={setBreed}
           />
 
           <Text style={styles.label}>성별</Text>
           <View style={styles.genderContainer}>
-            <TouchableOpacity 
-              style={[styles.genderButton, gender === 'MALE' && styles.genderButtonActive]} 
+            <TouchableOpacity
+              style={[styles.genderButton, gender === 'MALE' && styles.genderButtonActive]}
               onPress={() => setGender('MALE')}
             >
               <Text style={[styles.genderText, gender === 'MALE' && styles.genderTextActive]}>수컷</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.genderButton, gender === 'FEMALE' && styles.genderButtonActive]} 
+            <TouchableOpacity
+              style={[styles.genderButton, gender === 'FEMALE' && styles.genderButtonActive]}
               onPress={() => setGender('FEMALE')}
             >
               <Text style={[styles.genderText, gender === 'FEMALE' && styles.genderTextActive]}>암컷</Text>
             </TouchableOpacity>
           </View>
-          
+
           <Text style={styles.label}>생년월일</Text>
           <View style={styles.pickerRow}>
             <TouchableOpacity style={styles.dateSelectorBox} onPress={() => openPicker('year')}>
@@ -190,12 +190,12 @@ export default function HorseProfileScreen() {
           </View>
 
           <TouchableOpacity style={styles.button} onPress={handleRegister}>
-            <Text style={styles.buttonText}>마필 마스터 등록하기</Text>
+            <Text style={styles.buttonText}>등록하기</Text>
           </TouchableOpacity>
         </View>
 
         {/* 🎯 [동적 피드백] 순수 백엔드 DB 결과 바인딩 레일 */}
-        {horses.length > 0 && <Text style={styles.sectionTitle}>현재 등록된 마필 목록 ({horses.length}마리)</Text>}
+        {horses.length > 0 && <Text style={styles.sectionTitle}>현재 등록된 말 목록 ({horses.length}마리)</Text>}
         {horses.map((horse) => (
           <View key={horse.id || horse.registrationNumber} style={styles.horseItem}>
             <View style={styles.itemHeader}>
@@ -206,7 +206,7 @@ export default function HorseProfileScreen() {
             </View>
             <View style={styles.itemBody}>
               <Text style={styles.horseSub}>• 등록번호: {horse.registrationNumber}</Text>
-              <Text style={styles.horseSub}>• 담당 관리사: {horse.manager}</Text>
+              <Text style={styles.horseSub}>• 담당 관리자: {horse.manager}</Text>
               <Text style={styles.horseSub}>• 생년월일: {horse.birthDate}</Text>
             </View>
           </View>
@@ -239,8 +239,8 @@ export default function HorseProfileScreen() {
                   <Text style={[
                     styles.itemText,
                     (activeType === 'year' && year === item) ||
-                    (activeType === 'month' && month === item) ||
-                    (activeType === 'day' && day === item) ? styles.selectedItemText : null
+                      (activeType === 'month' && month === item) ||
+                      (activeType === 'day' && day === item) ? styles.selectedItemText : null
                   ]}>
                     {item}{activeType === 'year' ? '년' : activeType === 'month' ? '월' : '일'}
                   </Text>
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   genderTextActive: { color: '#fff' },
   button: { backgroundColor: '#4f6ef7', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 12 },
   buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  
+
   horseItem: { backgroundColor: '#fff', padding: 16, borderRadius: 14, marginBottom: 10, shadowColor: '#4f6ef7', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, borderWidth: 1, borderColor: '#e2e8f0' },
   itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingBottom: 6 },
   horseName: { fontSize: 16, fontWeight: '700', color: '#1e293b' },
