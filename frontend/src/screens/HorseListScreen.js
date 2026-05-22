@@ -45,7 +45,7 @@ export default function HorseListScreen({ navigation }) {
 
   const sectionListRef = useRef(null);
 
-  // 🎯 [수정] 더미 데이터를 배제하고 서버 데이터 스트림을 가공하는 핵심 유닛
+  // 🎯 서버 데이터 스트림을 초성별 Section 데이터로 가공하는 핵심 유닛
   const processHorseData = (dataArray) => {
     if (!dataArray || dataArray.length === 0) {
       setSections([]);
@@ -77,14 +77,17 @@ export default function HorseListScreen({ navigation }) {
     setSections(sectionArray);
   };
 
-  // 📡 [변경] 백엔드로부터 온전한 말 목록 마스터 데이터를 긁어오는 비동기 함수
+  // 📡 백엔드로부터 말 목록 데이터를 가져오는 비동기 함수
   const fetchHorses = async () => {
     try {
       const response = await axios.get(`${API_URL}/horses`);
       processHorseData(response.data || []);
     } catch (error) {
       console.error('말 목록 로드 실패:', error);
-      Alert.alert("조회 실패", "서버로부터 마필 목록을 가져오지 못했습니다.");
+      Alert.alert(
+        "오류", 
+        "말 목록을 불러오는 데 실패했습니다.\n서버 연결을 확인해주세요."
+      );
       processHorseData([]); // 에러 발생 시 빈 리스트 처리로 크래시 방지
     } finally {
       setLoading(false);

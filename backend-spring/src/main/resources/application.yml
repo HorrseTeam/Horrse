@@ -1,9 +1,10 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/horse_health}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -19,3 +20,9 @@ server:
 ai:
   server:
     url: ${AI_SERVER_URL:http://localhost:8000}
+
+jwt:
+  secret: horrse-jwt-secret-key-2026-very-long-string-for-security
+
+firebase:
+  service-account-file: firebase-service-account.json
