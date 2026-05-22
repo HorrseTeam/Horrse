@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import TrainingRecordModal from './TrainingRecordModal'; 
+import TrainingRecordModal from './TrainingRecordModal';
 
 export default function HorseDetailScreen({ route, navigation }) {
   // 라우팅 파라미터가 유실되었을 때를 대비한 안전 장치 탑재
   const { horse } = route?.params || { horse: {} };
-  const [isModalVisible, setModalVisible] = useState(false); 
+  const [isModalVisible, setModalVisible] = useState(false);
 
   const getBreedIcon = (breed) => {
     if (!breed) return '🐴';
@@ -21,7 +21,7 @@ export default function HorseDetailScreen({ route, navigation }) {
       const birthYear = parseInt(birthDate.split('-')[0], 10);
       const currentYear = new Date().getFullYear();
       if (isNaN(birthYear)) return '-';
-      
+
       // 한국식 세는나이 연산 기준
       return `${currentYear - birthYear + 1}살`;
     } catch {
@@ -67,8 +67,8 @@ export default function HorseDetailScreen({ route, navigation }) {
 
       {/* 2. 훈련·컨디션 기록 버튼 섹션 */}
       <Text style={styles.sectionTitle}>훈련 및 컨디션 관리</Text>
-      <TouchableOpacity 
-        style={styles.recordButton} 
+      <TouchableOpacity
+        style={styles.recordButton}
         onPress={() => setModalVisible(true)}
         activeOpacity={0.7}
       >
@@ -76,17 +76,17 @@ export default function HorseDetailScreen({ route, navigation }) {
       </TouchableOpacity>
 
       {/* 훈련 기록 전용 모달 컴포넌트 연결 */}
-      <TrainingRecordModal 
-        isVisible={isModalVisible} 
-        onClose={() => setModalVisible(false)} 
+      <TrainingRecordModal
+        isVisible={isModalVisible}
+        onClose={() => setModalVisible(false)}
         horseId={horse.id}
       />
 
       {/* 3. AI 진단 섹션 */}
       <Text style={styles.sectionTitle}>AI 진단 요청</Text>
       <View style={styles.aiCardRow}>
-        <TouchableOpacity 
-          style={[styles.aiCard, { backgroundColor: '#4f6ef7' }]} 
+        <TouchableOpacity
+          style={[styles.aiCard, { backgroundColor: '#4f6ef7' }]}
           onPress={() => navigation.navigate('AIAnalysis', { horse, analysisType: 'lameness' })}
           activeOpacity={0.8}
         >
@@ -94,9 +94,9 @@ export default function HorseDetailScreen({ route, navigation }) {
           <Text style={styles.aiCardTitle}>파행 진단</Text>
           <Text style={styles.aiCardDesc}>보행 영상 분석</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.aiCard, { backgroundColor: '#10b981' }]} 
+
+        <TouchableOpacity
+          style={[styles.aiCard, { backgroundColor: '#10b981' }]}
           onPress={() => navigation.navigate('AIAnalysis', { horse, analysisType: 'hoof' })}
           activeOpacity={0.8}
         >
@@ -107,20 +107,20 @@ export default function HorseDetailScreen({ route, navigation }) {
       </View>
 
       {/* 4. 마필 마스터 데이터 정보 섹션 */}
-      <Text style={styles.sectionTitle}>기본 마적 정보</Text>
+      <Text style={styles.sectionTitle}>기본 말 정보</Text>
       <View style={styles.infoCard}>
         <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>담당 관리사</Text>
-          <Text style={styles.infoValue}>{horse.manager || '관리사 미지정'}</Text>
+          <Text style={styles.infoLabel}>담당 관리자</Text>
+          <Text style={styles.infoValue}>{horse.manager || '관리자 미지정'}</Text>
         </View>
         <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>마필 성별</Text>
+          <Text style={styles.infoLabel}>성별</Text>
           <Text style={styles.infoValue}>{renderGender(horse.gender)}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>마적 등록 번호</Text>
-          <Text style={styles.infoValue}>{horse.registrationNumber || '미등록 마필'}</Text>
+          <Text style={styles.infoLabel}>등록 번호</Text>
+          <Text style={styles.infoValue}>{horse.registrationNumber || '미등록 말'}</Text>
         </View>
       </View>
     </ScrollView>
