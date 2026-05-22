@@ -60,11 +60,18 @@ export default function DashboardDetailScreen({ route, navigation }) {
       return;
     }
 
-    setLoading(true);
+    loading || setLoading(true);
 
     try {
-      // 📡 백엔드 실제 엔드포인트: GET /api/dashboard/{horseId}
-      const response = await axios.get(`${API_URL}/dashboard/${horse.id}`);
+      // 쿼리 스트링 파라미터 구성
+      const params = {
+        horseId: horse.id,
+        startDate: formatDateString(start),
+        endDate: formatDateString(end),
+      };
+
+      // 백엔드 API 호출 (엔드포인트는 설계에 맞춰 조율 가능)
+      const response = await axios.get(`${API_URL}/dashboard`, { params });
       const { trainingRecords, lamenessDiagnoses, hoofDiagnoses } = response.data;
 
       // 훈련 기록: date 기준 오름차순 정렬 (차트용)
