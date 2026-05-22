@@ -22,14 +22,16 @@ export default function LoginScreen({ navigation }) {
 
     try {
       // 📡 백엔드 세션/토큰 인증 API 호출
-      const response = await axios.post(`${API_URL}/api/login`, {
+      const response = await axios.post(`${API_URL}/auth/login`, {
         username: email.trim(),
         password: password
       });
 
       // 백엔드 응답에서 토큰이나 세션 상태 확인 (인증 처리 레이어)
-      // 예: const { token } = response.data;
-      // 필요 시 여기에 AsyncStorage나 SecureStore 등을 이용한 토큰 저장 코드를 기입합니다.
+      const token = response.data.token;
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
 
       Alert.alert('인증 성공', '로그인 되었습니다.');
 
