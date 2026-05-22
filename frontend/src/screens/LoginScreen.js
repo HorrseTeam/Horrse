@@ -22,7 +22,7 @@ export default function LoginScreen({ navigation }) {
 
     try {
       // 📡 백엔드 세션/토큰 인증 API 호출
-      const response = await axios.post(`${API_URL}/api/login`, {
+      const response = await axios.post(`${API_URL}/auth/login`, {
         username: email.trim(),
         password: password
       });

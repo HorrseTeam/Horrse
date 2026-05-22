@@ -71,7 +71,7 @@ export default function DashboardDetailScreen({ route, navigation }) {
       };
 
       // 백엔드 API 호출 (엔드포인트는 설계에 맞춰 조율 가능)
-      const response = await axios.get(`${API_URL}/api/dashboard`, { params });
+      const response = await axios.get(`${API_URL}/dashboard`, { params });
       const { bioRecords, trainingLogs, aiDiagnoses } = response.data;
 
       // 차트용 시간 오름차순 정렬
