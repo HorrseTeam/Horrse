@@ -19,5 +19,6 @@ public class TrainingRecord {
     private Integer heartRate;
     private String appetite;
     private String trainingType;
+    private Integer trainingTime; // 훈련 시간 (분)
     private String notes;
 }

@@ -64,7 +64,8 @@ export default function TrainingRecordModal({ isVisible, onClose, horseId }) {
 
     try {
       // 📡 [변경] 백엔드 DB 연동 데이터 파이프라인 전송
-      await axios.post(`${API_URL}/training-records`, {
+      // 📡 실제 백엔드 엔드포인트: POST /api/records
+      await axios.post(`${API_URL}/records`, {
         horseId,
         trainingType: trainingType.trim(),
         trainingTime: parsedTime,
