@@ -60,7 +60,7 @@ export default function DashboardDetailScreen({ route, navigation }) {
       return;
     }
 
-    setLoading(true);
+    loading || setLoading(true);
 
     try {
       // 쿼리 스트링 파라미터 구성
@@ -72,16 +72,22 @@ export default function DashboardDetailScreen({ route, navigation }) {
 
       // 백엔드 API 호출 (엔드포인트는 설계에 맞춰 조율 가능)
       const response = await axios.get(`${API_URL}/dashboard`, { params });
-      const { bioRecords, trainingLogs, aiDiagnoses } = response.data;
+      const { trainingRecords, lamenessDiagnoses, hoofDiagnoses } = response.data;
 
-      // 차트용 시간 오름차순 정렬
-      const sortedRecords = (bioRecords || []).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      // 훈련 기록: date 기준 오름차순 정렬 (차트용)
+      const sortedRecords = (trainingRecords || []).sort((a, b) => new Date(a.date) - new Date(b.date));
       // 일지는 최신순 정렬
-      const sortedTrainings = (trainingLogs || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const sortedTrainings = (trainingRecords || []).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      // AI 진단 이력: lameness + hoof 통합
+      const allDiagnoses = [
+        ...(lamenessDiagnoses || []).map(d => ({ ...d, analysisType: 'lameness' })),
+        ...(hoofDiagnoses || []).map(d => ({ ...d, analysisType: 'hoof' })),
+      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       setRecords(sortedRecords);
       setTrainings(sortedTrainings);
-      setDiagnoses(aiDiagnoses || []);
+      setDiagnoses(allDiagnoses);
     } catch (error) {
       console.error("Dashboard 로딩 실패:", error);
       Alert.alert("데이터 로드 실패", "서버에서 정보를 가져오지 못했습니다.");
@@ -116,15 +122,14 @@ export default function DashboardDetailScreen({ route, navigation }) {
     try {
       const updatedBody = {
         trainingType: editType,
-        trainingTime: Number(editTime),
         temperature: Number(editTemp),
         heartRate: Number(editHeart),
         appetite: editAppetite,
         notes: editNotes
       };
 
-      // 백엔드 수정 API 호출
-      await axios.put(`${API_URL}/api/trainings/${editingId}`, updatedBody);
+      // 📡 실제 백엔드 엔드포인트: PUT /api/records/{id}
+      await axios.put(`${API_URL}/records/${editingId}`, updatedBody);
       
       setShowEditModal(false);
       if (Platform.OS !== 'web') Alert.alert("완료", "일지가 수정되었습니다.");
@@ -141,7 +146,8 @@ export default function DashboardDetailScreen({ route, navigation }) {
   const handleDeleteTraining = (id) => {
     const performDelete = async () => {
       try {
-        await axios.delete(`${API_URL}/api/trainings/${id}`);
+        // 📡 실제 백엔드 엔드포인트: DELETE /api/records/{id}
+        await axios.delete(`${API_URL}/records/${id}`);
         if (Platform.OS !== 'web') Alert.alert("삭제 완료", "일지가 삭제되었습니다.");
         // 삭제 후 목록 새로고침
         fetchDashboardData(startDate, endDate);
@@ -214,12 +220,12 @@ export default function DashboardDetailScreen({ route, navigation }) {
   // 📊 차트 컴포넌트 공급용 데이터 정제
   const chartData = {
     labels: records.length > 0 ? records.map(r => { 
-      const d = new Date(r.createdAt); 
+      const d = new Date(r.date);
       return `${d.getMonth() + 1}/${d.getDate()}`; 
     }) : ['-'],
     datasets: [
-      { data: records.length > 0 ? records.map(r => r.temperature) : [0], color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`, strokeWidth: 2 },
-      { data: records.length > 0 ? records.map(r => r.heartRate) : [0], color: (opacity = 1) => `rgba(79, 110, 247, ${opacity})`, strokeWidth: 2 }
+      { data: records.length > 0 ? records.map(r => r.temperature ?? 0) : [0], color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`, strokeWidth: 2 },
+      { data: records.length > 0 ? records.map(r => r.heartRate ?? 0) : [0], color: (opacity = 1) => `rgba(79, 110, 247, ${opacity})`, strokeWidth: 2 }
     ],
     legend: ['체온(°C)', '심박수(bpm)']
   };
@@ -309,7 +315,7 @@ export default function DashboardDetailScreen({ route, navigation }) {
                   <View style={styles.innerDivider} />
                   
                   <View style={styles.cardBottomRow}>
-                    <Text style={styles.trainingDate}>{new Date(item.createdAt).toLocaleDateString()} 기록</Text>
+                    <Text style={styles.trainingDate}>{item.date ? new Date(item.date).toLocaleDateString() : '-'} 기록</Text>
                     
                     <View style={styles.actionButtonContainer}>
                       <TouchableOpacity style={styles.editInlineBtn} onPress={() => handleEditTraining(item.id)}>

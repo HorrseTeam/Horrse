@@ -39,6 +39,7 @@ public class TrainingRecordService {
             if (updatedRecord.getHeartRate() != null) record.setHeartRate(updatedRecord.getHeartRate());
             if (updatedRecord.getAppetite() != null) record.setAppetite(updatedRecord.getAppetite());
             if (updatedRecord.getTrainingType() != null) record.setTrainingType(updatedRecord.getTrainingType());
+            if (updatedRecord.getTrainingTime() != null) record.setTrainingTime(updatedRecord.getTrainingTime());
             if (updatedRecord.getNotes() != null) record.setNotes(updatedRecord.getNotes());
             return repository.save(record);
         });

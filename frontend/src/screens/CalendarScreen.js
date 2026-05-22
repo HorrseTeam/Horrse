@@ -24,22 +24,9 @@ const formatDateString = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-const DEFAULT_HORSES = [
-  { id: 1, name: "강풍", breed: "더러브렛" },
-  { id: 2, name: "감귤이", breed: "제주마" },
-  { id: 3, name: "샛별", breed: "제주마" },
-  { id: 4, name: "에이스", breed: "더러브렛" },
-  { id: 5, name: "태풍", breed: "더러브렛" },
-];
+const DEFAULT_HORSES = [];
 
-const DEFAULT_SCHEDULES = [
-  { id: 101, horseId: 1, title: "정기 편자 교체 및 장제", description: "앞발굽 편자 마모 심함. 새 편자로 교체.", eventDate: "2026-05-17T14:00:00" },
-  { id: 102, horseId: 2, title: "파행(절뚝거림) 정밀 진단", description: "좌측 전지 보양 이상 점검.", eventDate: "2026-05-17T16:30:00" },
-  { id: 103, horseId: 3, title: "인플루엔자 정기 예방접종", description: "상반기 정기 독감 예방 백신 접종일.", eventDate: "2026-05-18T10:00:00" },
-  { id: 104, horseId: 4, title: "정기 구충제 투약", description: "분기별 종합 구충제 투여.", eventDate: "2026-05-20T09:00:00" },
-  { id: 105, horseId: 5, title: "원인 불명 파행 재진", description: "겔 패드 장착 후 보양 개선 여부 확인.", eventDate: "2026-05-22T15:00:00" },
-  { id: 106, horseId: 1, title: "정기 훈련 및 주로 적응", description: "장제 후 첫 경속보 훈련.", eventDate: "2026-05-25T11:00:00" },
-];
+const DEFAULT_SCHEDULES = [];
 
 const TIME_OPTIONS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -152,12 +139,10 @@ export default function NewCalendarScreen() {
       const allSchedules = scheduleResults.flatMap(r => r.data);
       initializedFromServer.current = true;
       applySchedules(allSchedules);
-    } catch {
-      setHorses(DEFAULT_HORSES);
-      if (!initializedFromServer.current) {
-        applySchedules(DEFAULT_SCHEDULES);
-        initializedFromServer.current = true;
-      }
+    } catch (error) {
+      console.error("일정 데이터 로드 실패:", error);
+      setHorses([]);
+      applySchedules([]);
     }
   }, [applySchedules]);
 
@@ -193,14 +178,9 @@ export default function NewCalendarScreen() {
       
       await schedule24HoursBeforeAlarm(formTitle, horseName, eventDate);
       Alert.alert('성공', '일정이 등록되었습니다!');
-    } catch {
-      setSchedules(prev => [{
-        id: Date.now(), horseId: formHorseId,
-        title: formTitle, description: formContent, eventDate,
-      }, ...prev]);
-
-      await schedule24HoursBeforeAlarm(formTitle, horseName, eventDate);
-      Alert.alert('성공', '임시 일정이 등록되었습니다!');
+    } catch (error) {
+      console.error("일정 등록 실패:", error);
+      Alert.alert('오류', '일정 등록 중 서버 오류가 발생했습니다.');
     }
     resetForm();
   };
