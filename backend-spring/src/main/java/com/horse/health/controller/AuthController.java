@@ -39,4 +39,18 @@ public class AuthController {
                 })
                 .orElse(ResponseEntity.status(401).body(Map.of("message", "아이디 또는 비밀번호가 틀렸습니다")));
     }
+
+    // 비밀번호 변경
+    @PutMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody com.horse.health.dto.PasswordChangeRequestDto request) {
+        boolean success = authService.changePassword(
+                request.getUsername(),
+                request.getCurrentPassword(),
+                request.getNewPassword()
+        );
+        if (success) {
+            return ResponseEntity.ok(Map.of("message", "비밀번호가 변경되었습니다"));
+        }
+        return ResponseEntity.status(400).body(Map.of("message", "현재 비밀번호가 틀렸습니다"));
+    }
 }
