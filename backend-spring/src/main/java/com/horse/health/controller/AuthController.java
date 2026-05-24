@@ -39,4 +39,5 @@ public class AuthController {
                 })
                 .orElse(ResponseEntity.status(401).body(Map.of("message", "아이디 또는 비밀번호가 틀렸습니다")));
     }
+
 }
