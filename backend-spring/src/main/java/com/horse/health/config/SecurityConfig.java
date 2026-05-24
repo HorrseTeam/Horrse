@@ -16,6 +16,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import org.springframework.security.config.Customizer;
+
 import java.util.List;
 
 @Configuration
@@ -33,7 +35,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // 구체적인 CORS 설정 연결
+
+
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -41,6 +46,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // OPTIONS 메서드 전면 허용
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/users/*/fcm-token").permitAll()
+                        .requestMatchers("/api/ai/**").permitAll()             // AI 진단 (JWT 없이 호출)
+                        .requestMatchers("/api/diagnosis/callback").permitAll() // 구 콜백 호환성
+                        .requestMatchers("/api/diagnosis/hoof-callback").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtFilter(jwtUtil),
@@ -48,17 +56,17 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // CORS 관련 상세 설정을 빈으로 정의합니다.
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*")); // 모든 출처 허용
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // PUT을 포함한 메서드 허용
-        configuration.setAllowedHeaders(List.of("*")); // 모든 헤더 허용
+        // 실제 배포 시에는 특정 도메인만 허용하도록 변경해야 합니다.
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
-
+        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", source.toString() != null ? configuration : null);
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }
