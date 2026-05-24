@@ -31,8 +31,9 @@ public class LamenessDiagnosis {
     @Column(name = "video_url", length = 1000)
     private String videoUrl;
 
-    @Column(name = "result_image", length = 1000)
-    private String resultImage;
+    // AI 서버가 반환한 문제 관절 강조 이미지 URL (MinIO)
+    @Column(name = "result_image_url", length = 1000)
+    private String resultImageUrl;
 
     @Column(name = "walk_direction", length = 10)
     private String walkDirection;
