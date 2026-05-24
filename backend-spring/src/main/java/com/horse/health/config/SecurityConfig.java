@@ -40,6 +40,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/users/*/fcm-token").permitAll()
+                        .requestMatchers("/api/ai/**").permitAll()             // AI 진단 (JWT 없이 호출)
+                        .requestMatchers("/api/diagnosis/callback").permitAll() // 구 콜백 호환성
+                        .requestMatchers("/api/diagnosis/hoof-callback").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtFilter(jwtUtil),

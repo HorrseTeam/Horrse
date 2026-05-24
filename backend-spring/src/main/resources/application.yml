@@ -19,7 +19,7 @@ server:
 
 ai:
   server:
-    url: ${AI_SERVER_URL:http://localhost:8000}
+    url: ${AI_SERVER_URL:http://localhost:8001}   # FastAPI AI 서버 포트
 
 jwt:
   secret: horrse-jwt-secret-key-2026-very-long-string-for-security
