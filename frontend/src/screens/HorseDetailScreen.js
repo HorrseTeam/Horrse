@@ -111,7 +111,7 @@ export default function HorseDetailScreen({ route, navigation }) {
       <View style={styles.infoCard}>
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>담당 관리자</Text>
-          <Text style={styles.infoValue}>{horse.manager || '관리자 미지정'}</Text>
+          <Text style={styles.infoValue}>{horse.managerId || '관리자 미지정'}</Text>
         </View>
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>성별</Text>

@@ -42,7 +42,7 @@ export default function SettingsScreen({ navigation }) {
         newPassword: newPassword
       };
       
-      await axios.put(`${API_URL}/api/user/password`, payload);
+      await axios.put(`${API_URL}/user/password`, payload);
       
       Alert.alert("성공", "비밀번호가 안전하게 변경되었습니다.");
       resetPasswordForm();

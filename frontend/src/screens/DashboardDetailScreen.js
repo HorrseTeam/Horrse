@@ -71,7 +71,7 @@ export default function DashboardDetailScreen({ route, navigation }) {
       };
 
       // 백엔드 API 호출 (엔드포인트는 설계에 맞춰 조율 가능)
-      const response = await axios.get(`${API_URL}/dashboard`, { params });
+      const response = await axios.get(`${API_URL}/dashboard/${horse.id}`);
       const { trainingRecords, lamenessDiagnoses, hoofDiagnoses } = response.data;
 
       // 훈련 기록: date 기준 오름차순 정렬 (차트용)
@@ -335,7 +335,7 @@ export default function DashboardDetailScreen({ route, navigation }) {
             <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>AI 분석/진단 이력</Text></View>
             {diagnoses.length > 0 ? (
               diagnoses.map((diag, idx) => (
-                <TouchableOpacity key={idx} style={styles.diagCard}>
+                  <TouchableOpacity key={idx} style={styles.diagCard} onPress={() => navigation.navigate('AIDetail', { resultData: diag, analysisType: diag.analysisType })}>
                   <View style={styles.diagHeader}>
                     <View style={styles.typeTag}><Text style={styles.diagType}>{diag.analysisType === 'hoof' ? '🐾 발굽 분석' : '🦿 파행 진단'}</Text></View>
                     <Text style={styles.statusLabel}>{diag.resultStatus}</Text>

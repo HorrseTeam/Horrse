@@ -64,10 +64,13 @@ export default function NotificationManager() {
         
         console.log('📌 [실제 푸시 토큰 추출 완료]:', pushToken);
 
+        // FCM 토큰도 추출
+        const fcmToken = await Notifications.getDevicePushTokenAsync();
+        console.log('🔥 [FCM 토큰]:', fcmToken.data);
+
         // 7. 📡 [백엔드 연동] 추출된 유저 기기의 토큰을 데이터베이스(DB)에 동기화 전송
-        await axios.post(`${API_URL}/api/notifications/register`, {
-          token: pushToken,
-          devicePlatform: Platform.OS // 'ios' 혹은 'android' 정보 동시 전달
+        await axios.post(`${API_URL}/user/fcm-token`, {
+          token: fcmToken.data
         });
         
         console.log('🚀 [서버 동기화 완료] 실시간 기기 푸시 토큰이 백엔드 DB에 정상 매핑되었습니다.');
