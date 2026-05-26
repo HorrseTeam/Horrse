@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "226472996899",
+    "project_id": "horrse-84b2b",
+    "storage_bucket": "horrse-84b2b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:226472996899:android:5e17fbd2085b4a9c5dc196",
+        "android_client_info": {
+          "package_name": "com.hools.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCAtW-mLI8D3-IxIsDl9xZj3MbTGNvG-QA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

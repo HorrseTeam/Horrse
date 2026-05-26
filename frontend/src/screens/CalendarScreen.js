@@ -6,7 +6,7 @@ import {
 import { Calendar } from 'react-native-calendars';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
-import * as Notifications from 'expo-notifications'; 
+import * as Notifications from 'expo-notifications';
 import API_URL from '../config/api';
 
 Notifications.setNotificationHandler({
@@ -24,15 +24,8 @@ const formatDateString = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-const DEFAULT_HORSES = [];
-
-const DEFAULT_SCHEDULES = [];
-
-const TIME_OPTIONS = [
-  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-  '19:00', '20:00', '21:00',
-];
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const MINUTE_OPTIONS = ['00', '10', '20', '30', '40', '50'];
 
 export default function NewCalendarScreen() {
   const [selected, setSelected] = useState(formatDateString(new Date()));
@@ -46,19 +39,20 @@ export default function NewCalendarScreen() {
   const [formTitle, setFormTitle] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formDate, setFormDate] = useState('');
-  const [formTime, setFormTime] = useState('10:00');
+  const [formHour, setFormHour] = useState('10');
+  const [formMinute, setFormMinute] = useState('00');
   const [showHorsePicker, setShowHorsePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showHourPicker, setShowHourPicker] = useState(false);
+  const [showMinutePicker, setShowMinutePicker] = useState(false);
 
   const deletedIds = useRef(new Set());
   const initializedFromServer = useRef(false);
 
-  // 🎯 [수정] 기기 알림 권한 요청 시 undefined 변수 에러 핸들링 완료
   useEffect(() => {
     (async () => {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
@@ -80,27 +74,20 @@ export default function NewCalendarScreen() {
     })();
   }, []);
 
-  // 🎯 [수정] 알림 예약 로직 고도화 (안드로이드 채널 및 트리거 포맷 보정)
   const schedule24HoursBeforeAlarm = async (title, horseName, eventDateString) => {
     try {
-      const targetTime = new Date(eventDateString); 
+      const targetTime = new Date(eventDateString);
       const now = new Date();
-
-      // 정확히 일정 24시간 전 시각 계산
       const alarmTimeInMs = targetTime.getTime() - (24 * 60 * 60 * 1000);
       const alarmDate = new Date(alarmTimeInMs);
 
-      // [공통 알림 콘텐츠 구조 정의]
       const notificationContent = {
         title: `🐴 [일정 알림] ${horseName} - 24시간 전`,
         body: `'${title}' 일정이 24시간 후에 시작됩니다. 준비 상태를 확인하세요!`,
         sound: true,
-        android: {
-          channelId: 'high_importance_channel', // 안드로이드 필수 필드 누락 보완
-        },
+        android: { channelId: 'high_importance_channel' },
       };
 
-      // 1. 계산된 알림 시간이 이미 지난 과거인 경우 -> 즉시 발송
       if (alarmDate <= now) {
         await Notifications.scheduleNotificationAsync({
           content: {
@@ -109,16 +96,13 @@ export default function NewCalendarScreen() {
             sound: true,
             android: { channelId: 'high_importance_channel' },
           },
-          trigger: { seconds: 1 }, 
+          trigger: { seconds: 1 },
         });
-        console.log("이미 지난 과거 시점이므로 등록한 현재 시간에 즉시 알림을 발송합니다.");
       } else {
-        // 2. 정상 케이스 -> 미래의 특정 타임스탬프 시점에 예약
         await Notifications.scheduleNotificationAsync({
           content: notificationContent,
-          trigger: { date: alarmDate }, // 유효성 높은 객체 형태 트리거 지정
+          trigger: { date: alarmDate },
         });
-        console.log(`정상 알림 예약 완료 (일정 24시간 전): ${alarmDate.toLocaleString()}`);
       }
     } catch (error) {
       console.log('푸시 알림 스케줄링 실패:', error);
@@ -134,7 +118,7 @@ export default function NewCalendarScreen() {
       const horsesRes = await axios.get(`${API_URL}/horses`);
       setHorses(horsesRes.data);
       const scheduleResults = await Promise.all(
-        horsesRes.data.map(h => axios.get(`${API_URL}/schedules/horse/${h.id}`))
+          horsesRes.data.map(h => axios.get(`${API_URL}/schedules/horse/${h.id}`))
       );
       const allSchedules = scheduleResults.flatMap(r => r.data);
       initializedFromServer.current = true;
@@ -147,18 +131,20 @@ export default function NewCalendarScreen() {
   }, [applySchedules]);
 
   useFocusEffect(
-    useCallback(() => { fetchData(); }, [fetchData])
+      useCallback(() => { fetchData(); }, [fetchData])
   );
 
   const resetForm = () => {
     setFormTitle('');
     setFormContent('');
     setFormDate('');
-    setFormTime('10:00');
+    setFormHour('10');
+    setFormMinute('00');
     setFormHorseId(null);
     setShowModal(false);
     setShowHorsePicker(false);
-    setShowTimePicker(false);
+    setShowHourPicker(false);
+    setShowMinutePicker(false);
   };
 
   const handleAddSchedule = async () => {
@@ -166,6 +152,7 @@ export default function NewCalendarScreen() {
     if (!formTitle.trim()) { Alert.alert('알림', '일정 제목을 입력해주세요!'); return; }
     if (!formDate) { Alert.alert('알림', '날짜를 선택해주세요!'); return; }
 
+    const formTime = `${formHour}:${formMinute}`;
     const eventDate = `${formDate}T${formTime}:00`;
     const horseName = getHorseName(formHorseId);
 
@@ -175,7 +162,7 @@ export default function NewCalendarScreen() {
         description: formContent, eventDate, notify: true,
       });
       setSchedules(prev => [res.data, ...prev]);
-      
+
       await schedule24HoursBeforeAlarm(formTitle, horseName, eventDate);
       Alert.alert('성공', '일정이 등록되었습니다!');
     } catch (error) {
@@ -187,23 +174,23 @@ export default function NewCalendarScreen() {
 
   const handleDeleteSchedule = useCallback((id, title) => {
     Alert.alert(
-      '일정 삭제',
-      `'${title}' 일정을 삭제하시겠습니까?`,
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: () => {
-            deletedIds.current.add(id);
-            setSchedules(prev => prev.filter(item => item.id !== id));
-            axios.delete(`${API_URL}/schedules/${id}`).catch(() => {
-              console.log(`서버 삭제 실패: id=${id}, 로컬 삭제 유지`);
-            });
-            Alert.alert('성공', '일정이 삭제되었습니다.');
+        '일정 삭제',
+        `'${title}' 일정을 삭제하시겠습니까?`,
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '삭제',
+            style: 'destructive',
+            onPress: () => {
+              deletedIds.current.add(id);
+              setSchedules(prev => prev.filter(item => item.id !== id));
+              axios.delete(`${API_URL}/schedules/${id}`).catch(() => {
+                console.log(`서버 삭제 실패: id=${id}, 로컬 삭제 유지`);
+              });
+              Alert.alert('성공', '일정이 삭제되었습니다.');
+            },
           },
-        },
-      ]
+        ]
     );
   }, []);
 
@@ -252,240 +239,265 @@ export default function NewCalendarScreen() {
   };
 
   const selectedSchedules = schedules.filter(
-    s => s.eventDate && s.eventDate.split('T')[0] === selected
+      s => s.eventDate && s.eventDate.split('T')[0] === selected
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>일정 관리</Text>
-          <Text style={styles.headerSub}>말들의 주요 일정을 확인하고 관리하세요</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => { setFormDate(selected || formatDateString(new Date())); setShowModal(true); }}
-        >
-          <Text style={styles.addButtonText}>+ 등록</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.viewToggle}>
-        {['month', 'week'].map(mode => (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>일정 관리</Text>
+            <Text style={styles.headerSub}>말들의 주요 일정을 확인하고 관리하세요</Text>
+          </View>
           <TouchableOpacity
-            key={mode}
-            style={[styles.toggleBtn, viewMode === mode && styles.toggleBtnActive]}
-            onPress={() => {
-              setViewMode(mode);
-              if (mode === 'week') {
-                const today = new Date();
-                const selDate = selected ? new Date(selected + 'T00:00:00') : today;
-                const todaySunday = new Date(today);
-                todaySunday.setDate(today.getDate() - today.getDay());
-                todaySunday.setHours(0, 0, 0, 0);
-                const selSunday = new Date(selDate);
-                selSunday.setDate(selDate.getDate() - selDate.getDay());
-                selSunday.setHours(0, 0, 0, 0);
-                setWeekOffset(Math.round((selSunday - todaySunday) / 86400000));
-              }
-            }}
+              style={styles.addButton}
+              onPress={() => { setFormDate(selected || formatDateString(new Date())); setShowModal(true); }}
           >
-            <Text style={[styles.toggleText, viewMode === mode && styles.toggleTextActive]}>
-              {mode === 'month' ? '월간' : '주간'}
-            </Text>
+            <Text style={styles.addButtonText}>+ 등록</Text>
           </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView>
-        {viewMode === 'month' && (
-          <View style={styles.calendarCard}>
-            <Calendar
-              current={selected || undefined}
-              onDayPress={day => setSelected(day.dateString)}
-              markedDates={currentMarkings}
-              theme={{
-                selectedDayBackgroundColor: '#4f6ef7',
-                todayTextColor: '#f97316',
-                arrowColor: '#4f6ef7',
-                dotColor: '#f97316',
-                textDayFontWeight: '500',
-                textMonthFontWeight: 'bold',
-                textDayHeaderFontWeight: '600',
-              }}
-            />
-          </View>
-        )}
-
-        {viewMode === 'week' && (
-          <View style={styles.weekCard}>
-            <View style={styles.weekNavRow}>
-              <TouchableOpacity style={styles.weekNavBtn} onPress={() => setWeekOffset(p => p - 7)}>
-                <Text style={styles.weekNavArrow}>‹</Text>
-              </TouchableOpacity>
-              <Text style={styles.weekRangeLabel}>{getWeekRangeLabel(weekDays)}</Text>
-              <TouchableOpacity style={styles.weekNavBtn} onPress={() => setWeekOffset(p => p + 7)}>
-                <Text style={styles.weekNavArrow}>›</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.weekRow}>
-              {weekDays.map((d, i) => {
-                const dateStr = formatDateString(d);
-                const isSelected = dateStr === selected;
-                const isToday = dateStr === formatDateString(new Date());
-                return (
-                  <TouchableOpacity key={i} style={styles.weekDay} onPress={() => setSelected(dateStr)}>
-                    <Text style={[
-                      styles.weekDayLabel,
-                      i === 0 && { color: '#ef4444' },
-                      i === 6 && { color: '#3b82f6' },
-                    ]}>
-                      {dayLabels[i]}
-                    </Text>
-                    <View style={[
-                      styles.weekDateCircle,
-                      isSelected && styles.weekDateCircleSelected,
-                      isToday && !isSelected && styles.weekDateCircleToday,
-                    ]}>
-                      <Text style={[
-                        styles.weekDateNum,
-                        isSelected && { color: '#fff' },
-                        isToday && !isSelected && { color: '#f97316' },
-                      ]}>
-                        {d.getDate()}
-                      </Text>
-                    </View>
-                    {marks[dateStr] && <View style={styles.weekDot} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        <View style={styles.scheduleSection}>
-          <Text style={styles.selectedDate}>{selected || formatDateString(new Date())} 일정</Text>
-          {selectedSchedules.length > 0 ? (
-            selectedSchedules.map((s, idx) => (
-              <View key={`${s.id}-${idx}`} style={styles.scheduleCard}>
-                
-                <Pressable
-                  style={styles.deleteIconButton}
-                  onPress={() => handleDeleteSchedule(s.id, s.title)}
-                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                >
-                  <Text style={styles.deleteIconText}>🗑️</Text>
-                </Pressable>
-
-                <View style={styles.scheduleTimeBar} />
-                <View style={styles.scheduleBody}>
-                  <View style={styles.scheduleTop}>
-                    <Text style={styles.scheduleTitle} numberOfLines={1}>{s.title}</Text>
-                  </View>
-                  {s.description ? <Text style={styles.scheduleContent}>{s.description}</Text> : null}
-                  <View style={styles.scheduleBottomRow}>
-                    <Text style={styles.scheduleTime}>
-                      🕐 {s.eventDate ? s.eventDate.replace('T', ' ').slice(0, 16) : '-'}
-                    </Text>
-                    <Text style={styles.scheduleHorseInline}>🐴 {getHorseName(s.horseId)}</Text>
-                  </View>
-                </View>
-
-              </View>
-            ))
-          ) : (
-            <Text style={styles.noSchedule}>등록된 일정이 없습니다.</Text>
-          )}
         </View>
-      </ScrollView>
 
-      {/* 일정 등록 모달 */}
-      <Modal visible={showModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>일정 등록</Text>
-              <TouchableOpacity onPress={resetForm}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView keyboardShouldPersistTaps="handled">
-              <Text style={styles.formLabel}>말 선택 *</Text>
-              <TouchableOpacity style={styles.dropdown} onPress={() => setShowHorsePicker(p => !p)}>
-                <Text style={formHorseId ? styles.dropdownSelected : styles.dropdownPlaceholder}>
-                  {formHorseId ? getHorseName(formHorseId) : '말을 선택해주세요'}
+        <View style={styles.viewToggle}>
+          {['month', 'week'].map(mode => (
+              <TouchableOpacity
+                  key={mode}
+                  style={[styles.toggleBtn, viewMode === mode && styles.toggleBtnActive]}
+                  onPress={() => {
+                    setViewMode(mode);
+                    if (mode === 'week') {
+                      const today = new Date();
+                      const selDate = selected ? new Date(selected + 'T00:00:00') : today;
+                      const todaySunday = new Date(today);
+                      todaySunday.setDate(today.getDate() - today.getDay());
+                      todaySunday.setHours(0, 0, 0, 0);
+                      const selSunday = new Date(selDate);
+                      selSunday.setDate(selDate.getDate() - selDate.getDay());
+                      selSunday.setHours(0, 0, 0, 0);
+                      setWeekOffset(Math.round((selSunday - todaySunday) / 86400000));
+                    }
+                  }}
+              >
+                <Text style={[styles.toggleText, viewMode === mode && styles.toggleTextActive]}>
+                  {mode === 'month' ? '월간' : '주간'}
                 </Text>
-                <Text style={styles.dropdownArrow}>{showHorsePicker ? '▲' : '▼'}</Text>
               </TouchableOpacity>
-              {showHorsePicker && (
-                <View style={styles.dropdownList}>
-                  {horses.map(h => (
-                    <TouchableOpacity
-                      key={h.id}
-                      style={[styles.dropdownItem, formHorseId === h.id && styles.dropdownItemActive]}
-                      onPress={() => { setFormHorseId(h.id); setShowHorsePicker(false); }}
-                    >
-                      <Text style={[styles.dropdownItemText, formHorseId === h.id && { color: '#fff' }]}>
-                        🐴 {h.name} ({h.breed})
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              <Text style={styles.formLabel}>일정 제목 *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="예: 예방접종, 편자 교체"
-                value={formTitle}
-                onChangeText={setFormTitle}
-              />
-
-              <Text style={styles.formLabel}>세부 내용</Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                placeholder="세부 내용을 입력하세요"
-                value={formContent}
-                onChangeText={setFormContent}
-                multiline
-                numberOfLines={3}
-              />
-
-              <Text style={styles.formLabel}>날짜 *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="YYYY-MM-DD (예: 2026-05-18)"
-                value={formDate}
-                onChangeText={setFormDate}
-                keyboardType="numeric"
-              />
-
-              <Text style={styles.formLabel}>시각</Text>
-              <TouchableOpacity style={styles.dropdown} onPress={() => setShowTimePicker(p => !p)}>
-                <Text style={styles.dropdownSelected}>🕐 {formTime}</Text>
-                <Text style={styles.dropdownArrow}>{showTimePicker ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
-              {showTimePicker && (
-                <View style={styles.dropdownList}>
-                  {TIME_OPTIONS.map(t => (
-                    <TouchableOpacity
-                      key={t}
-                      style={[styles.dropdownItem, formTime === t && styles.dropdownItemActive]}
-                      onPress={() => { setFormTime(t); setShowTimePicker(false); }}
-                    >
-                      <Text style={[styles.dropdownItemText, formTime === t && { color: '#fff' }]}>{t}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </ScrollView>
-            <TouchableOpacity style={styles.submitButton} onPress={handleAddSchedule}>
-              <Text style={styles.submitButtonText}>등록</Text>
-            </TouchableOpacity>
-          </View>
+          ))}
         </View>
-      </Modal>
-    </View>
+
+        <ScrollView>
+          {viewMode === 'month' && (
+              <View style={styles.calendarCard}>
+                <Calendar
+                    current={selected || undefined}
+                    onDayPress={day => setSelected(day.dateString)}
+                    markedDates={currentMarkings}
+                    theme={{
+                      selectedDayBackgroundColor: '#4f6ef7',
+                      todayTextColor: '#f97316',
+                      arrowColor: '#4f6ef7',
+                      dotColor: '#f97316',
+                      textDayFontWeight: '500',
+                      textMonthFontWeight: 'bold',
+                      textDayHeaderFontWeight: '600',
+                    }}
+                />
+              </View>
+          )}
+
+          {viewMode === 'week' && (
+              <View style={styles.weekCard}>
+                <View style={styles.weekNavRow}>
+                  <TouchableOpacity style={styles.weekNavBtn} onPress={() => setWeekOffset(p => p - 7)}>
+                    <Text style={styles.weekNavArrow}>‹</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.weekRangeLabel}>{getWeekRangeLabel(weekDays)}</Text>
+                  <TouchableOpacity style={styles.weekNavBtn} onPress={() => setWeekOffset(p => p + 7)}>
+                    <Text style={styles.weekNavArrow}>›</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.weekRow}>
+                  {weekDays.map((d, i) => {
+                    const dateStr = formatDateString(d);
+                    const isSelected = dateStr === selected;
+                    const isToday = dateStr === formatDateString(new Date());
+                    return (
+                        <TouchableOpacity key={i} style={styles.weekDay} onPress={() => setSelected(dateStr)}>
+                          <Text style={[
+                            styles.weekDayLabel,
+                            i === 0 && { color: '#ef4444' },
+                            i === 6 && { color: '#3b82f6' },
+                          ]}>
+                            {dayLabels[i]}
+                          </Text>
+                          <View style={[
+                            styles.weekDateCircle,
+                            isSelected && styles.weekDateCircleSelected,
+                            isToday && !isSelected && styles.weekDateCircleToday,
+                          ]}>
+                            <Text style={[
+                              styles.weekDateNum,
+                              isSelected && { color: '#fff' },
+                              isToday && !isSelected && { color: '#f97316' },
+                            ]}>
+                              {d.getDate()}
+                            </Text>
+                          </View>
+                          {marks[dateStr] && <View style={styles.weekDot} />}
+                        </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+          )}
+
+          <View style={styles.scheduleSection}>
+            <Text style={styles.selectedDate}>{selected || formatDateString(new Date())} 일정</Text>
+            {selectedSchedules.length > 0 ? (
+                selectedSchedules.map((s, idx) => (
+                    <View key={`${s.id}-${idx}`} style={styles.scheduleCard}>
+                      <Pressable
+                          style={styles.deleteIconButton}
+                          onPress={() => handleDeleteSchedule(s.id, s.title)}
+                          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                      >
+                        <Text style={styles.deleteIconText}>🗑️</Text>
+                      </Pressable>
+                      <View style={styles.scheduleTimeBar} />
+                      <View style={styles.scheduleBody}>
+                        <View style={styles.scheduleTop}>
+                          <Text style={styles.scheduleTitle} numberOfLines={1}>{s.title}</Text>
+                        </View>
+                        {s.description ? <Text style={styles.scheduleContent}>{s.description}</Text> : null}
+                        <View style={styles.scheduleBottomRow}>
+                          <Text style={styles.scheduleTime}>
+                            🕐 {s.eventDate ? s.eventDate.replace('T', ' ').slice(0, 16) : '-'}
+                          </Text>
+                          <Text style={styles.scheduleHorseInline}>🐴 {getHorseName(s.horseId)}</Text>
+                        </View>
+                      </View>
+                    </View>
+                ))
+            ) : (
+                <Text style={styles.noSchedule}>등록된 일정이 없습니다.</Text>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* 일정 등록 모달 */}
+        <Modal visible={showModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>일정 등록</Text>
+                <TouchableOpacity onPress={resetForm}>
+                  <Text style={styles.modalClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView keyboardShouldPersistTaps="handled">
+                <Text style={styles.formLabel}>말 선택 *</Text>
+                <TouchableOpacity style={styles.dropdown} onPress={() => setShowHorsePicker(p => !p)}>
+                  <Text style={formHorseId ? styles.dropdownSelected : styles.dropdownPlaceholder}>
+                    {formHorseId ? getHorseName(formHorseId) : '말을 선택해주세요'}
+                  </Text>
+                  <Text style={styles.dropdownArrow}>{showHorsePicker ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
+                {showHorsePicker && (
+                    <View style={styles.dropdownList}>
+                      {horses.map(h => (
+                          <TouchableOpacity
+                              key={h.id}
+                              style={[styles.dropdownItem, formHorseId === h.id && styles.dropdownItemActive]}
+                              onPress={() => { setFormHorseId(h.id); setShowHorsePicker(false); }}
+                          >
+                            <Text style={[styles.dropdownItemText, formHorseId === h.id && { color: '#fff' }]}>
+                              🐴 {h.name} ({h.breed})
+                            </Text>
+                          </TouchableOpacity>
+                      ))}
+                    </View>
+                )}
+
+                <Text style={styles.formLabel}>일정 제목 *</Text>
+                <TextInput
+                    style={styles.input}
+                    placeholder="예: 예방접종, 편자 교체"
+                    value={formTitle}
+                    onChangeText={setFormTitle}
+                />
+
+                <Text style={styles.formLabel}>세부 내용</Text>
+                <TextInput
+                    style={[styles.input, styles.inputMultiline]}
+                    placeholder="세부 내용을 입력하세요"
+                    value={formContent}
+                    onChangeText={setFormContent}
+                    multiline
+                    numberOfLines={3}
+                />
+
+                <Text style={styles.formLabel}>날짜 *</Text>
+                <TextInput
+                    style={styles.input}
+                    placeholder="YYYY-MM-DD (예: 2026-05-18)"
+                    value={formDate}
+                    onChangeText={setFormDate}
+                    keyboardType="numeric"
+                />
+
+                <Text style={styles.formLabel}>시각</Text>
+                <View style={styles.timePickerRow}>
+                  {/* 시간 선택 */}
+                  <View style={styles.timePickerCol}>
+                    <TouchableOpacity style={styles.dropdown} onPress={() => { setShowHourPicker(p => !p); setShowMinutePicker(false); }}>
+                      <Text style={styles.dropdownSelected}>🕐 {formHour}시</Text>
+                      <Text style={styles.dropdownArrow}>{showHourPicker ? '▲' : '▼'}</Text>
+                    </TouchableOpacity>
+                    {showHourPicker && (
+                        <View style={styles.timeDropdownList}>
+                          <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
+                            {HOUR_OPTIONS.map(h => (
+                                <TouchableOpacity
+                                    key={h}
+                                    style={[styles.dropdownItem, formHour === h && styles.dropdownItemActive]}
+                                    onPress={() => { setFormHour(h); setShowHourPicker(false); }}
+                                >
+                                  <Text style={[styles.dropdownItemText, formHour === h && { color: '#fff' }]}>{h}시</Text>
+                                </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                    )}
+                  </View>
+
+                  {/* 분 선택 */}
+                  <View style={styles.timePickerCol}>
+                    <TouchableOpacity style={styles.dropdown} onPress={() => { setShowMinutePicker(p => !p); setShowHourPicker(false); }}>
+                      <Text style={styles.dropdownSelected}>{formMinute}분</Text>
+                      <Text style={styles.dropdownArrow}>{showMinutePicker ? '▲' : '▼'}</Text>
+                    </TouchableOpacity>
+                    {showMinutePicker && (
+                        <View style={styles.timeDropdownList}>
+                          {MINUTE_OPTIONS.map(m => (
+                              <TouchableOpacity
+                                  key={m}
+                                  style={[styles.dropdownItem, formMinute === m && styles.dropdownItemActive]}
+                                  onPress={() => { setFormMinute(m); setShowMinutePicker(false); }}
+                              >
+                                <Text style={[styles.dropdownItemText, formMinute === m && { color: '#fff' }]}>{m}분</Text>
+                              </TouchableOpacity>
+                          ))}
+                        </View>
+                    )}
+                  </View>
+                </View>
+              </ScrollView>
+              <TouchableOpacity style={styles.submitButton} onPress={handleAddSchedule}>
+                <Text style={styles.submitButtonText}>등록</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </View>
   );
 }
 
@@ -527,31 +539,16 @@ const styles = StyleSheet.create({
   scheduleSection: { paddingHorizontal: 16, marginTop: 10, paddingBottom: 32 },
   selectedDate: { fontSize: 15, fontWeight: '700', color: '#1e2d6b', marginBottom: 12 },
   scheduleCard: {
-    position: 'relative',
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    marginBottom: 10,
-    shadowColor: '#4f6ef7',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    position: 'relative', flexDirection: 'row', backgroundColor: '#fff', borderRadius: 14,
+    marginBottom: 10, shadowColor: '#4f6ef7', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   scheduleTimeBar: { width: 5, backgroundColor: '#4f6ef7', borderTopLeftRadius: 14, borderBottomLeftRadius: 14 },
   scheduleBody: { flex: 1, padding: 14 },
   scheduleTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  scheduleTitle: { fontSize: 15, fontWeight: '700', color: '#1e2d6b', flex: 1, marginRight: 35 }, 
+  scheduleTitle: { fontSize: 15, fontWeight: '700', color: '#1e2d6b', flex: 1, marginRight: 35 },
   deleteIconButton: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    padding: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 44,
-    minHeight: 44,
-    zIndex: 999,
-    backgroundColor: 'transparent',
+    position: 'absolute', top: 6, right: 6, padding: 10,
+    justifyContent: 'center', alignItems: 'center', minWidth: 44, minHeight: 44, zIndex: 999,
   },
   deleteIconText: { fontSize: 18 },
   scheduleContent: { fontSize: 13, color: '#64748b', marginBottom: 8, lineHeight: 18, marginRight: 25 },
@@ -575,6 +572,9 @@ const styles = StyleSheet.create({
   dropdownItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   dropdownItemActive: { backgroundColor: '#4f6ef7' },
   dropdownItemText: { fontSize: 14, color: '#1e293b' },
+  timePickerRow: { flexDirection: 'row', gap: 12 },
+  timePickerCol: { flex: 1 },
+  timeDropdownList: { borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 10, marginTop: 4, backgroundColor: '#fff', overflow: 'hidden' },
   submitButton: { backgroundColor: '#4f6ef7', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 20 },
   submitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });

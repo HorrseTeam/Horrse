@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from 'react-native';
 
 import NotificationManager from './src/services/Notification';
@@ -21,12 +21,13 @@ import CalendarScreen from './src/screens/CalendarScreen';
 
 import SettingsScreen from './src/screens/SettingsScreen';
 
+import AIDetailScreen from './src/screens/AIDetailScreen';
+
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const HorseStack = createNativeStackNavigator();
 const DashboardStack = createNativeStackNavigator();
 
-// ── 말 관리 스택 ──────────────────────────────────────────────
 function HorseStackNavigator() {
     return (
         <HorseStack.Navigator
@@ -57,7 +58,6 @@ function HorseStackNavigator() {
     );
 }
 
-// ── 대시보드 스택 ─────────────────────────────────────────────
 function DashboardStackNavigator() {
     return (
         <DashboardStack.Navigator
@@ -77,11 +77,15 @@ function DashboardStackNavigator() {
                 component={DashboardDetailScreen}
                 options={({ route }) => ({ title: `${route.params?.horse?.name || '말'} 데이터` })}
             />
+            <DashboardStack.Screen
+                name="AIDetail"
+                component={AIDetailScreen}
+                options={{ title: 'AI 분석 상세 결과' }}
+            />
         </DashboardStack.Navigator>
     );
 }
 
-// ── 하단 5개 탭 메뉴 묶음 컴포넌트 ─────────────────────────────
 const TAB_ICONS = {
     Home: { active: '🏠', inactive: '🏠' },
     HorseManage: { active: '🐴', inactive: '🐴' },
@@ -92,8 +96,7 @@ const TAB_ICONS = {
 
 function MainTabNavigator() {
     return (
-        <>
-            {/* 로그인 완료 후 여기서 알림 등록 실행 */}
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#4f6ef7' }} edges={['top']}>
             <NotificationManager />
             <Tab.Navigator
                 screenOptions={({ route }) => ({
@@ -150,11 +153,10 @@ function MainTabNavigator() {
                     options={{ tabBarLabel: '설정' }}
                 />
             </Tab.Navigator>
-        </>
+        </SafeAreaView>
     );
 }
 
-// ── 최상위 앱 내비게이션 진입점 ──────────────────────────────────
 export default function App() {
     return (
         <SafeAreaProvider>

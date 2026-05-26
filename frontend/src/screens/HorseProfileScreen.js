@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Modal, FlatList, Dimensions } from 'react-native';
 import axios from 'axios';
 import API_URL from '../config/api';
@@ -49,9 +50,11 @@ export default function HorseProfileScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchHorses();
-  }, []);
+  useFocusEffect(
+      useCallback(() => {
+        fetchHorses();
+      }, [])
+  );
 
   const openPicker = (type) => {
     setActiveType(type);
@@ -88,7 +91,7 @@ export default function HorseProfileScreen() {
         birthDate: birthDateStr,
         gender,
         registrationNumber: registrationNumber.trim(),
-        manager: finalManager
+        managerId: finalManager
       });
 
       Alert.alert("성공", `${name}이(가) 등록되었습니다.`);
@@ -206,7 +209,7 @@ export default function HorseProfileScreen() {
             </View>
             <View style={styles.itemBody}>
               <Text style={styles.horseSub}>• 등록번호: {horse.registrationNumber}</Text>
-              <Text style={styles.horseSub}>• 담당 관리자: {horse.manager}</Text>
+              <Text style={styles.horseSub}>• 담당 관리자: {horse.managerId}</Text>
               <Text style={styles.horseSub}>• 생년월일: {horse.birthDate}</Text>
             </View>
           </View>
