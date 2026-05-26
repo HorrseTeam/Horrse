@@ -4,20 +4,9 @@ version: '3.8'
 services:
   db:
     restart: always
-    # Typically don't expose db port directly in prod
+    # DB 포트는 외부 노출 금지
     # ports:
     #   - "5432:5432"
-
-  redis:
-    restart: always
-
-  ai_server:
-    restart: always
-    # 운영환경에서 AI 서버는 Spring Boot 내부 네트워크에서만 접근
-    # 외부에 포트 직접 노출 금지
-
-  ai_worker:
-    restart: always
 
   api:
     restart: always
