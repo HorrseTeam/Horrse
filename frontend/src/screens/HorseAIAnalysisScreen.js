@@ -13,6 +13,7 @@ export default function HorseAIAnalysisScreen({ route }) {
   const [analysisType, setAnalysisType] = useState(initialType || 'hoof');
   const [walkDirection, setWalkDirection] = useState('SIDE');
   const [walkType, setWalkType] = useState('WALK');
+  const [imageFile, setImageFile] = useState(null);
 
   // 🎯 메모리 누수 방지용 컴포넌트 활성화 플래그 Ref
   const isMounted = useRef(true);
@@ -48,8 +49,9 @@ export default function HorseAIAnalysisScreen({ route }) {
 
       // 확장자 포맷 검증
       const uri = selectedFile.uri.toLowerCase();
-      const isImage = /\.(jpg|jpeg|png)$/.test(uri);
-      const isVideo = /\.(mp4|mov)$/.test(uri);
+      const mimeType = selectedFile.mimeType || selectedFile.type || '';
+      const isImage = /\.(jpg|jpeg|png)$/.test(uri) || mimeType.startsWith('image/');
+      const isVideo = /\.(mp4|mov)$/.test(uri) || mimeType.startsWith('video/');
 
       if (analysisType === 'hoof' && !isImage) {
         Alert.alert('업로드 실패', '파일 유형 및 용량을 확인해주세요.');
@@ -61,6 +63,7 @@ export default function HorseAIAnalysisScreen({ route }) {
         return;
       }
 
+      setImageFile(selectedFile.file || null);
       setImage(selectedFile.uri);
       setResult(null);
     }
@@ -114,17 +117,15 @@ export default function HorseAIAnalysisScreen({ route }) {
         formData.append('walk_type', walkType);
       }
 
-      const filename = image.split('/').pop() || 'file.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `${analysisType === 'hoof' ? 'image' : 'video'}/${match[1]}` : `application/octet-stream`;
-      
-      // 🎯 [수정] 네이티브 멀티파트 충돌을 우회하는 데이터 매핑 규격화 적용
-      const filePayload = JSON.parse(JSON.stringify({
-        uri: image,
-        name: filename,
-        type: type
-      }));
-      formData.append(analysisType === 'hoof' ? 'image' : 'video', filePayload);
+      const fieldName = analysisType === 'hoof' ? 'image' : 'video';
+      if (imageFile) {
+        formData.append(fieldName, imageFile);
+      } else {
+        const filename = image.split('/').pop() || 'file.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `${analysisType === 'hoof' ? 'image' : 'video'}/${match[1]}` : 'application/octet-stream';
+        formData.append(fieldName, { uri: image, name: filename, type: type });
+      }
 
       const endpoint = analysisType === 'hoof' ? '/ai/hoof' : '/ai/lameness';
       const response = await axios.post(API_URL + endpoint, formData, {
