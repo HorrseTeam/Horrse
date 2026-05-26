@@ -22,7 +22,9 @@ services:
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
-      - AI_SERVER_URL=${AI_SERVER_URL}   # 이재윤님 AI 서버 주소 (GCP IP:8001)
+      - AI_SERVER_URL=${AI_SERVER_URL}   # horrse-ai 컨테이너 → 호스트 포트 8001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Linux에서 호스트 IP를 host.docker.internal로 접근 가능
     restart: unless-stopped
 
 volumes:
