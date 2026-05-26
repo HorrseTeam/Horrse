@@ -124,18 +124,19 @@ export default function HorseAIAnalysisScreen({ route }) {
         name: filename,
         type: type
       }));
-      formData.append('file', filePayload);
+      formData.append(analysisType === 'hoof' ? 'image' : 'video', filePayload);
 
       const endpoint = analysisType === 'hoof' ? '/ai/hoof' : '/ai/lameness';
       const response = await axios.post(API_URL + endpoint, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      if (response.data?.task_id) {
-        pollTaskStatus(response.data.task_id);
+      if (response.data?.status === 'SUCCESS') {
+        setResult(response.data.result);
+        setLoading(false);
       } else {
         setLoading(false);
-        Alert.alert('에러', 'Task ID를 받지 못했습니다.');
+        Alert.alert('에러', response.data?.error?.message || 'AI 분석 중 오류가 발생했습니다.');
       }
     } catch (error) {
       setLoading(false);
