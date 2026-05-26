@@ -237,22 +237,22 @@ export default function HorseAIAnalysisScreen({ route }) {
           <View style={styles.resultRow}>
             <Text style={styles.resultLabel}>진단:</Text>
             <Text style={styles.resultValue}>
-              {analysisType === 'hoof' ? `${result.grade} 등급` : (result.lameness || result.lameness_yn)}
+              {analysisType === 'hoof' ? `${result.grade} 등급` : (result.lameness_yn ? '파행 있음 ⚠️' : '정상 ✅')}
             </Text>
           </View>
-          {analysisType === 'hoof' && result.confidence && (
+          {analysisType === 'hoof' && result.grade_probability && (
             <View style={styles.resultRow}>
               <Text style={styles.resultLabel}>신뢰도:</Text>
-              <Text style={styles.resultValue}>{result.confidence}%</Text>
+              <Text style={styles.resultValue}>{(result.grade_probability * 100).toFixed(1)}%</Text>
             </View>
           )}
-          {analysisType === 'lameness' && result.diagnosis && (
+          {analysisType === 'lameness' && (result.affected_area || result.problem_joint) && (
             <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
               <Text style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: 4 }}>
-                이상 부위: <Text style={{ color: '#ef4444' }}>{result.diagnosis.affected_area}</Text>
+                이상 부위: <Text style={{ color: '#ef4444' }}>{result.affected_area}</Text>
               </Text>
-              <Text style={{ color: '#475569', marginBottom: 2 }}>문제 관절: {result.diagnosis.problem_joint}</Text>
-              <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 18 }}>상세설명: {result.diagnosis.description}</Text>
+              <Text style={{ color: '#475569', marginBottom: 2 }}>문제 관절: {result.problem_joint}</Text>
+              <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 18 }}>신뢰도: {(result.confidence * 100).toFixed(1)}%</Text>
             </View>
           )}
         </View>
