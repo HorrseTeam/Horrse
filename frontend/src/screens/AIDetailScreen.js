@@ -49,7 +49,7 @@ export default function AIDetailScreen({ route }) {
                     }]}>
                         {/* [요구사항 반영: 마-1, 바-15] 발굽은 4단계 상태 텍스트, 파행은 Y/N 여부 표시 */}
                         {analysisType === 'hoof'
-                            ? resultData.status // '정상', '경미', '중등도', '심각' 중 하나
+                            ? resultData.grade
                             : (resultData.isLameness ? '파행 감지 (Y)' : '정상 보행 (N)')}
                     </Text>
                 </View>
@@ -77,10 +77,45 @@ export default function AIDetailScreen({ route }) {
                     <Text style={styles.highlightText}>이상 부위: {resultData.affectedArea}</Text>
                 ) : null}
 
-                {/* 공통 상세 설명 (AI가 반환한 부가 설명이 있을 경우 표시) */}
-                <Text style={styles.description}>
-                    {resultData.description || '상세 분석 내용이 없습니다.'}
-                </Text>
+                {analysisType === 'hoof' ? (
+                    <>
+                        <Text style={styles.description}>
+                            {'발굽 등급: ' + (resultData.grade || '-')}
+                        </Text>
+                        {resultData.classProbabilities && (() => {
+                            try {
+                                const probs = typeof resultData.classProbabilities === 'string'
+                                    ? JSON.parse(resultData.classProbabilities)
+                                    : resultData.classProbabilities;
+                                return (
+                                    <>
+                                        <Text style={styles.description}>{'크랙 감지 확률: ' + (probs['크랙'] !== undefined ? (probs['크랙'] * 100).toFixed(1) + '%' : '-')}</Text>
+                                        <Text style={styles.description}>{'손상 감지 확률: ' + (probs['손상'] !== undefined ? (probs['손상'] * 100).toFixed(1) + '%' : '-')}</Text>
+                                    </>
+                                );
+                            } catch(e) { return null; }
+                        })()}
+                        <Text style={[styles.description, {marginTop: 8, color: resultData.grade === '심각' ? '#ef4444' : resultData.grade === '중등도' ? '#f97316' : resultData.grade === '경미' ? '#facc15' : '#10b981'}]}>
+                            {resultData.grade === '심각' ? '심각한 크랙 및 손상이 감지되었습니다. 즉각적인 수의사 진료가 필요합니다.'
+                            : resultData.grade === '중등도' ? '중등도 손상이 감지되었습니다. 수의사 상담을 권장합니다.'
+                            : resultData.grade === '경미' ? '경미한 이상이 감지되었습니다. 주의 깊게 관찰하세요.'
+                            : '발굽 상태가 정상입니다. 정기적인 관리를 유지하세요.'}
+                        </Text>
+                    </>
+                ) : (
+                    <>
+                        <Text style={styles.description}>{'파행 감지: ' + (resultData.isLameness ? 'YES ⚠️' : 'NO ✅')}</Text>
+                        {resultData.affectedArea ? <Text style={styles.description}>{'이상 부위: ' + resultData.affectedArea}</Text> : null}
+                        {resultData.problemJoint ? <Text style={styles.description}>{'문제 관절: ' + resultData.problemJoint}</Text> : null}
+                        {resultData.walkType ? <Text style={styles.description}>{'보행 유형: ' + resultData.walkType + (resultData.walkDirection ? ' / 촬영 방향: ' + resultData.walkDirection : '')}</Text> : null}
+                        {resultData.confidence ? <Text style={styles.description}>{'좌우 비대칭 신뢰도: ' + (resultData.confidence * 100).toFixed(1) + '%'}</Text> : null}
+                        <Text style={[styles.description, {marginTop: 8, color: resultData.isLameness ? '#ef4444' : '#10b981'}]}>
+                            {resultData.isLameness
+                                ? '좌우 움직임 비대칭이 감지되었습니다. 수의사 진단을 권장합니다.'
+                                : '정상적인 보행 패턴이 감지되었습니다.'}
+                        </Text>
+                    </>
+                )}
             </View>
         </ScrollView>
     );
