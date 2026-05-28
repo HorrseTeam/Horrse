@@ -89,8 +89,7 @@ export default function AIDetailScreen({ route }) {
                                     : resultData.classProbabilities;
                                 return (
                                     <>
-                                        <Text style={styles.description}>{'크랙 감지 확률: ' + (probs['크랙'] !== undefined ? (probs['크랙'] * 100).toFixed(1) + '%' : '-')}</Text>
-                                        <Text style={styles.description}>{'손상 감지 확률: ' + (probs['손상'] !== undefined ? (probs['손상'] * 100).toFixed(1) + '%' : '-')}</Text>
+                                        <Text style={styles.description}>{'등급별 확률: 정상 ' + (probs['정상'] !== undefined ? (probs['정상'] * 100).toFixed(1) : '-') + '% / 경미 ' + (probs['경미'] !== undefined ? (probs['경미'] * 100).toFixed(1) : '-') + '% / 중등도 ' + (probs['중등도'] !== undefined ? (probs['중등도'] * 100).toFixed(1) : '-') + '% / 심각 ' + (probs['심각'] !== undefined ? (probs['심각'] * 100).toFixed(1) : '-') + '%'}</Text>
                                     </>
                                 );
                             } catch(e) { return null; }
