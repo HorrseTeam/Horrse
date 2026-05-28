@@ -32,7 +32,7 @@ export default function AIDetailScreen({ route }) {
             <View style={styles.imageWrapper}>
                 <Image
                     // [요구사항 반영: 마-8, 바-16] 분석 결과 이미지 또는 키포인트 시각화 이미지 표시
-                    source={{ uri: resultData.imageUrl || 'https://via.placeholder.com/400' }}
+                    source={{ uri: (analysisType === 'hoof' ? resultData.imageUrl : resultData.resultImageUrl) || 'https://via.placeholder.com/400' }}
                     style={styles.resultImage}
                 />
             </View>
@@ -44,13 +44,13 @@ export default function AIDetailScreen({ route }) {
                     <Text style={styles.label}>종합 상태:</Text>
                     <Text style={[styles.value, {
                         color: analysisType === 'hoof'
-                            ? getHoofStatusStyle(resultData.status).color
-                            : (resultData.isLame === 'Y' ? '#ef4444' : '#10b981')
+                            ? getHoofStatusStyle(resultData.grade).color
+                            : (resultData.isLameness ? '#ef4444' : '#10b981')
                     }]}>
                         {/* [요구사항 반영: 마-1, 바-15] 발굽은 4단계 상태 텍스트, 파행은 Y/N 여부 표시 */}
                         {analysisType === 'hoof'
                             ? resultData.status // '정상', '경미', '중등도', '심각' 중 하나
-                            : (resultData.isLame === 'Y' ? '파행 감지 (Y)' : '정상 보행 (N)')}
+                            : (resultData.isLameness ? '파행 감지 (Y)' : '정상 보행 (N)')}
                     </Text>
                 </View>
 
@@ -60,8 +60,8 @@ export default function AIDetailScreen({ route }) {
                         <View style={[
                             styles.gaugeFill,
                             {
-                                width: getHoofStatusStyle(resultData.status).percentage,
-                                backgroundColor: getHoofStatusStyle(resultData.status).color
+                                width: getHoofStatusStyle(resultData.grade).percentage,
+                                backgroundColor: getHoofStatusStyle(resultData.grade).color
                             }
                         ]} />
                     </View>
@@ -73,8 +73,8 @@ export default function AIDetailScreen({ route }) {
                 <Text style={styles.cardTitle}>AI 상세 분석</Text>
 
                 {/* [요구사항 반영: 바-15] 파행 진단 시 이상 부위 반환 결과 표시 */}
-                {analysisType === 'lameness' && resultData.abnormalArea ? (
-                    <Text style={styles.highlightText}>이상 부위: {resultData.abnormalArea}</Text>
+                {analysisType === 'lameness' && resultData.affectedArea ? (
+                    <Text style={styles.highlightText}>이상 부위: {resultData.affectedArea}</Text>
                 ) : null}
 
                 {/* 공통 상세 설명 (AI가 반환한 부가 설명이 있을 경우 표시) */}
