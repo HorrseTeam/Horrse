@@ -1,2 +1,2 @@
-const API_URL = 'http://34.22.72.27:8080/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 export default API_URL;
