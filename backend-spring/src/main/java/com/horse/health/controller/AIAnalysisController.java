@@ -12,6 +12,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
@@ -31,7 +32,14 @@ public class AIAnalysisController {
     @Value("${ai.server.url:http://localhost:8001}")
     private String aiServerUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate = createRestTemplate();
+
+    private static RestTemplate createRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10000);
+        factory.setReadTimeout(360000); // 6분
+        return new RestTemplate(factory);
+    }
     private final DiagnosisService diagnosisService;
     private final ObjectMapper objectMapper;
 

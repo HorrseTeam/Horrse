@@ -129,7 +129,8 @@ export default function HorseAIAnalysisScreen({ route }) {
 
       const endpoint = analysisType === 'hoof' ? '/ai/hoof' : '/ai/lameness';
       const response = await axios.post(API_URL + endpoint, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 360000
       });
 
       if (response.data?.status === 'SUCCESS') {
