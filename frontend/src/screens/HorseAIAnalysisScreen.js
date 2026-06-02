@@ -7,7 +7,7 @@ import API_URL from '../config/api';
 export default function HorseAIAnalysisScreen({ route }) {
   const { horse, analysisType: initialType } = route.params;
 
-  const [image, setImage] = useState(null); 
+  const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [analysisType, setAnalysisType] = useState(initialType || 'hoof');
@@ -26,8 +26,8 @@ export default function HorseAIAnalysisScreen({ route }) {
   }, []);
 
   const pickImage = async () => {
-    const mediaType = analysisType === 'hoof' 
-      ? ImagePicker.MediaTypeOptions.Images 
+    const mediaType = analysisType === 'hoof'
+      ? ImagePicker.MediaTypeOptions.Images
       : ImagePicker.MediaTypeOptions.Videos;
 
     let res = await ImagePicker.launchImageLibraryAsync({
@@ -38,7 +38,7 @@ export default function HorseAIAnalysisScreen({ route }) {
 
     if (!res.canceled) {
       const selectedFile = res.assets[0];
-      const fileSize = selectedFile.fileSize || 0; 
+      const fileSize = selectedFile.fileSize || 0;
 
       // 설계서 규격 용량 검증
       const limit = analysisType === 'hoof' ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
@@ -57,7 +57,7 @@ export default function HorseAIAnalysisScreen({ route }) {
         Alert.alert('업로드 실패', '파일 유형 및 용량을 확인해주세요.');
         return;
       }
-      
+
       if (analysisType === 'lameness' && !isVideo) {
         Alert.alert('업로드 실패', '파일 유형 및 용량을 확인해주세요.');
         return;
@@ -111,7 +111,7 @@ export default function HorseAIAnalysisScreen({ route }) {
     try {
       const formData = new FormData();
       formData.append('horse_id', String(horse.id));
-      
+
       if (analysisType === 'lameness') {
         formData.append('walk_direction', walkDirection);
         formData.append('walk_type', walkType);
@@ -216,8 +216,8 @@ export default function HorseAIAnalysisScreen({ route }) {
           <TouchableOpacity style={styles.outlineButton} onPress={pickImage}>
             <Text style={styles.outlineButtonText}>📁 파일 선택</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.solidButton, analysisType === 'hoof' ? { backgroundColor: '#10b981' } : { backgroundColor: '#4f6ef7' }]} 
+          <TouchableOpacity
+            style={[styles.solidButton, analysisType === 'hoof' ? { backgroundColor: '#10b981' } : { backgroundColor: '#4f6ef7' }]}
             onPress={uploadAndAnalyze}
           >
             <Text style={styles.solidButtonText}>AI 분석 요청</Text>
@@ -235,6 +235,17 @@ export default function HorseAIAnalysisScreen({ route }) {
       {result && !loading && (
         <View style={[styles.resultCard, { borderLeftColor: analysisType === 'hoof' ? '#10b981' : '#4f6ef7' }]}>
           <Text style={styles.resultTitle}>분석 결과</Text>
+
+          {result.result_image_url && (
+            <View style={styles.resultImageContainer}>
+              <Image
+                source={{ uri: result.result_image_url }}
+                style={styles.resultImage}
+                resizeMode="contain"
+              />
+            </View>
+          )}
+
           {result.message && <Text style={styles.resultMessage}>{result.message}</Text>}
           <View style={styles.resultRow}>
             <Text style={styles.resultLabel}>진단:</Text>
@@ -294,6 +305,8 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, color: '#4f6ef7', fontWeight: '600' },
   resultCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderLeftWidth: 4, elevation: 1, marginBottom: 24 },
   resultTitle: { fontSize: 18, fontWeight: 'bold', color: '#0f172a', marginBottom: 8 },
+  resultImageContainer: { width: '100%', height: 220, borderRadius: 10, overflow: 'hidden', marginBottom: 12, backgroundColor: '#f8faff' },
+  resultImage: { width: '100%', height: '100%' },
   resultMessage: { color: '#475569', marginBottom: 12 },
   resultRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingBottom: 6 },
   resultLabel: { color: '#64748b' },

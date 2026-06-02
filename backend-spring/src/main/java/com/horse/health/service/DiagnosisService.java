@@ -122,7 +122,7 @@ public class DiagnosisService {
 
         Long horseId         = Long.valueOf(result.get("horse_id").toString());
         String grade         = (String) result.get("grade");
-        String imageUrl      = (String) result.get("image_url");            // MinIO URL
+        String imageUrl      = (String) result.get("result_image_url");            // MinIO URL
 
         Double gradeProbability = null;
         if (result.containsKey("grade_probability") && result.get("grade_probability") != null) {
