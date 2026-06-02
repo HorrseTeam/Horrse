@@ -134,9 +134,6 @@ export default function HorseAIAnalysisScreen({ route }) {
       if (imageFile) {
         formData.append(fieldName, imageFile);
       } else {
-        const filename = image.split('/').pop() || 'file.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `${analysisType === 'hoof' ? 'image' : 'video'}/${match[1]}` : 'application/octet-stream';
         const fileUri = analysisType === 'lameness' ? (videoUri || image) : image;
         const filename = fileUri.split('/').pop() || (analysisType === 'lameness' ? 'video.mp4' : 'file.jpg');
         const match = /\.(\w+)$/.exec(filename);
