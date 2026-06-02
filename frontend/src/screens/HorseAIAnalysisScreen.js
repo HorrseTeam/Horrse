@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import axios from 'axios';
 import API_URL from '../config/api';
 
@@ -14,6 +15,7 @@ export default function HorseAIAnalysisScreen({ route }) {
   const [walkDirection, setWalkDirection] = useState('SIDE');
   const [walkType, setWalkType] = useState('WALK');
   const [imageFile, setImageFile] = useState(null);
+  const [videoUri, setVideoUri] = useState(null);
 
   // 🎯 메모리 누수 방지용 컴포넌트 활성화 플래그 Ref
   const isMounted = useRef(true);
@@ -64,7 +66,18 @@ export default function HorseAIAnalysisScreen({ route }) {
       }
 
       setImageFile(selectedFile.file || null);
-      setImage(selectedFile.uri);
+      if (analysisType === 'lameness') {
+        setVideoUri(selectedFile.uri);
+        try {
+          const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(selectedFile.uri, { time: 0 });
+          setImage(thumbUri);
+        } catch {
+          setImage(selectedFile.uri);
+        }
+      } else {
+        setVideoUri(null);
+        setImage(selectedFile.uri);
+      }
       setResult(null);
     }
   };
@@ -124,7 +137,8 @@ export default function HorseAIAnalysisScreen({ route }) {
         const filename = image.split('/').pop() || 'file.jpg';
         const match = /\.(\w+)$/.exec(filename);
         const type = match ? `${analysisType === 'hoof' ? 'image' : 'video'}/${match[1]}` : 'application/octet-stream';
-        formData.append(fieldName, { uri: image, name: filename, type: type });
+        const fileUri = analysisType === 'lameness' ? (videoUri || image) : image;
+        formData.append(fieldName, { uri: fileUri, name: filename, type: type });
       }
 
       const endpoint = analysisType === 'hoof' ? '/ai/hoof' : '/ai/lameness';
