@@ -11,6 +11,10 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.multipart.MultipartFile;
@@ -68,10 +72,23 @@ public class AIAnalysisController {
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("horse_id",       horseId);
+        body.add("horse_id",       String.valueOf(horseId));
         body.add("walk_direction", walkDirection);
         body.add("walk_type",      walkType);
-        body.add("video",          video.getResource());   // ← 필드명 "video"
+        Path tempVideoPath;
+        try {
+            String videoFilename = video.getOriginalFilename();
+            System.out.println("[DEBUG] video filename: " + videoFilename + ", contentType: " + video.getContentType() + ", size: " + video.getSize());
+            if (videoFilename == null || videoFilename.isEmpty()) videoFilename = "video.mp4";
+            String ext = videoFilename.contains(".") ? videoFilename.substring(videoFilename.lastIndexOf(".")) : ".mp4";
+            tempVideoPath = Files.createTempFile("upload_", ext);
+            video.transferTo(tempVideoPath.toFile());
+        } catch (java.io.IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("파일 저장 오류");
+        }
+        HttpHeaders videoHeaders = new HttpHeaders();
+        videoHeaders.setContentType(MediaType.parseMediaType(video.getContentType() != null ? video.getContentType() : "video/mp4"));
+        body.add("video", new HttpEntity<>(new FileSystemResource(tempVideoPath.toFile()), videoHeaders));
 
         try {
             ResponseEntity<String> aiRes = restTemplate.exchange(
@@ -120,8 +137,18 @@ public class AIAnalysisController {
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("horse_id", horseId);
-        body.add("image",    image.getResource());              // ← 필드명 "image"
+        body.add("horse_id", String.valueOf(horseId));
+        ByteArrayResource imageResource;
+        try {
+            imageResource = new ByteArrayResource(image.getBytes()) {
+                @Override public String getFilename() { return image.getOriginalFilename(); }
+            };
+        } catch (java.io.IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("파일 읽기 오류");
+        }
+        HttpHeaders imageHeaders = new HttpHeaders();
+        imageHeaders.setContentType(MediaType.parseMediaType(image.getContentType() != null ? image.getContentType() : "image/jpeg"));
+        body.add("image", new HttpEntity<>(imageResource, imageHeaders));
 
         try {
             ResponseEntity<String> aiRes = restTemplate.exchange(
